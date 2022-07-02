@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "outDir": "build/",
+    "lib": [
+      "ES2021",
+      "dom",
+      "dom.iterable"
+    ],
+    "newLine": "lf",
+    "pretty": true,
+    "removeComments": false,
+    "target": "ES2021",
+  }
+}
