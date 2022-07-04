@@ -9,13 +9,17 @@
 // @icon         https://jstris.jezevec10.com/favicon.ico
 // @grant        none
 // ==/UserScript==
-document.body.appendChild(document.createElement('script')).textContent = (function () {'use strict';
+function setupTrainingMaker() {'use strict';
 
 // Set HowManyBlocks to the number of blocks the player must use in order to complete your usermode
-const HowManyBlocks = 101;
+const HowManyBlocks = 15;
+
+const HowManyBlocksPerSegment = 5;
+
+const PauseHowLongBetweenPieces = 1;
 
 // Add an "H" right before the first piece that you are supposed to hold
-const BlockQueue = 'TILHZJOSOZILTJSIJSZTLOIOZJSTLJOLITZSILTSOZJLTJOISZJZLOSTISIJLZOTSLIZTOJILZOSJTIZTOSJLTJSZIOLZSJTOLISJOIZLTIOS';
+const BlockQueue = 'TIHLZJOSHOZILHTJSHIJSZTLOIOZJSTLJOLITZSILTSOZJLTJOISZJZLHOHSTISHIJLZOTSLIZTHOJHILHZHOSJHTHIZTOHSJLHTJSZHIOLZSJTOLISHJOIZLTIOS';
 
 // Keeps the page from locking up while the components are generated, even when ms is 0
 function sleep() {
@@ -33,7 +37,15 @@ function latestComponent() {
     return panelElement.querySelector(':scope form');
 }
 
+// removeComponent removes the given component.
+async function removeComponent(component) {
+    const removeButton = component.closest('div[data-cid]').querySelector(':scope a.js-clear');
+    removeButton.click();
+    await sleep();
+}
+
 const TriggerTypeBeforeGame = 'Before the game';
+const TriggerTypeOnGameStart = 'On game start';
 const TriggerTypeOnSpecificBlockNumber = 'On specific block #';
 const TriggerTypeExternalConditional = 'External/conditional';
 
@@ -80,35 +92,40 @@ async function newTrigger(triggerType, triggerArg) {
 
 const QueueIPiece = 'I';
 const QueueHoldPiece = 'H';
+const QueueHoldPieceNone = 'NONE';
+const QueueClassBlockFont = 'blockFont';
 
 // newQueueChange creates a new Queue Change component
-async function newQueueChange(queue, replace = false, repeat = false) {
-    const hasAlreadyHeld = !(queue.match(new RegExp(QueueHoldPiece)) instanceof Array);
-    queue = queue.replace(new RegExp(QueueHoldPiece, 'g'), '');
+async function newQueueChange(queue, holdPiece, replace = true, repeat = false) {
+    const workaroundExtraPiece = [];
+    if (holdPiece === '' || holdPiece === QueueHoldPieceNone) {
+        holdPiece = QueueHoldPieceNone;
+    }
+    queue = [`h=${holdPiece}`].concat(workaroundExtraPiece).concat(queue.replace(new RegExp(QueueHoldPiece, 'g'), '').split('')).join(',');
     const queueButton = document.querySelector('a[data-field-type="queue"]');
     queueButton.click();
     await sleep();
     const queueElement = latestComponent();
     if (replace) {
         await saveCheckBox(queueElement.querySelector(':scope input[data-rv-input="model.opts.wipe"]'), replace);
-        if (queue.length > 1 && !hasAlreadyHeld) {
-            queue = 'Z' + queue;
-        }
     }
     if (repeat) {
         await saveCheckBox(queueElement.querySelector(':scope input[data-rv-input="model.opts.repeat"]'), repeat);
     }
     if (typeof queue === 'string') {
-        await saveTextInput(queueElement.querySelector(':scope input[data-rv-input="model.opts.queue"]'), queue);
+        const queueField = queueElement.querySelector(':scope input[data-rv-input="model.opts.queue"]');
+        queueField.classList.remove(QueueClassBlockFont);
+        await saveTextInput(queueField, queue);
     }
 }
 
-const RelativeTriggerTypeAfterLines = 'Lines';
+const RelativeTriggerTypeTime = 'Time';
+const RelativeTriggerTypeLines = 'Lines';
+const RelativeTriggerTypeBlocks = 'Blocks';
 
 // newRelativeTrigger creates a new Relative Trigger component
 async function newRelativeTrigger(relativeTriggerType, amount, triggerID) {
-    const relativeTriggerButton = document.querySelector('a[data-field-type=rtrig]');
-    relativeTriggerButton.click();
+    document.querySelector('a[data-field-type=rtrig]').click();
     await sleep();
     const relativeTrigger = latestComponent();
     await selectOption([...relativeTrigger.querySelectorAll(':scope select[data-rv-input="model.opts.af"] option')].filter(el => el.textContent === relativeTriggerType)[0]);
@@ -119,9 +136,9 @@ async function newRelativeTrigger(relativeTriggerType, amount, triggerID) {
 const MapTypeSubtractFromCurrentBoard = 'Subtract from current board';
 const MapTypeAddToCurrentBoardOnTop = 'Add to current board (on top)';
 const MapTypeReplaceBoard = 'Replace board';
-// LineClearMapData a place for an I piece to complete a 2-line PC. It is used to trigger a line clear after subtracting the expected field from the board, in order to make sure the whole board is clear (there was a PC)
-const LineClearMapData = 'ERAAAREREREREQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==';
-let newMapIndex = 0;
+// MapDataLineClear a place for an I piece to complete a 2-line PC. It is used to trigger a line clear after subtracting the expected field from the board, in order to make sure the whole board is clear (there was a PC)
+const MapDataLineClear = 'ERAAAREREREREQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==';
+let newMapIndex = 1;
 let newMapContent;
 
 // syncMaps takes the content of the map that was just updated and updates all of the "Replace board" and "Subtract from current board" maps that occur after this map.
@@ -130,62 +147,52 @@ async function syncMaps() {
     const changedInput = inputElementFromMap(this.closest('form'));
     newMapContent = changedInput.value;
     const changedMap = changedInput.closest('form');
-    const isReplacementMap = changedMap.querySelector(':scope select[data-rv-input="model.opts.spawn"] option:checked').textContent === MapTypeReplaceBoard;
-    const maps = [...document.querySelectorAll('select[data-rv-input="model.opts.spawn"] option:checked')]
-        .filter(el => el.textContent === MapTypeSubtractFromCurrentBoard || el.textContent === MapTypeReplaceBoard)
-        .map(el => el.closest('form'));
     let foundMapYet = false;
-    let index = 0;
+    let blockIndex = 0;
+    let sectionIndex = 1;
     // The initial value suppresses a warning about how it might not have been initialized. But it will always be initialized
-    let previousMap = {};
     let progressInterval = 0;
-    for (const map of maps) {
-        if (changedMap === map) {
-            foundMapYet = true;
-            newMapIndex = Math.floor(index / 2);
-            if (isReplacementMap) {
-                await updateMapContent(previousMap, newMapContent);
+    for (const key in mapListsByPieceIndex) {
+        const maps = mapListsByPieceIndex[sectionIndex];
+        for (const map of maps) {
+            if (changedMap === map) {
+                foundMapYet = true;
+                newMapIndex = sectionIndex;
+                await updateSectionMapContent(maps, newMapContent, changedMap);
+                const totalMapCount = HowManyBlocksPerSegment * 3 - blockIndex;
+                const mapSyncProgress = async () => await updateStatus(`Syncing maps (${blockIndex}/${totalMapCount})`);
+                // Periodic updates so you know if it's still busy generating stuff
+                progressInterval = setInterval(mapSyncProgress, 1000);
+                await mapSyncProgress();
             }
-            const mapCount = maps.length - index;
-            const mapSyncProgress = async () => await updateStatus(`Syncing maps (${index}/${mapCount})`);
-            // Periodic updates so you know if it's still busy generating stuff
-            progressInterval = setInterval(mapSyncProgress, 1000);
-            await mapSyncProgress();
+            blockIndex++;
+            if (!foundMapYet) {
+                continue;
+            }
+            await updateMapContent(map, newMapContent);
         }
-        previousMap = map;
-        if (!foundMapYet) {
-            index++;
-            continue;
-        }
-        index++;
-        await updateMapContent(map, newMapContent);
+        sectionIndex++;
     }
     clearInterval(progressInterval);
     newMapIndex++;
-    const subtractionMaps = getSubtractionMaps();
-    if (newMapIndex < subtractionMaps.length) {
-        const editButton = subtractionMaps[newMapIndex].querySelector(':scope a.open-map-edit');
+    if (newMapIndex <= Object.keys(mapListsByPieceIndex).length) {
+        const editButton = mapListsByPieceIndex[newMapIndex][0].querySelector(':scope a.open-map-edit');
         editButton.click();
     }
     await resetStatus();
 }
 
-// Gets all of the "Subtract from current board" maps
-function getSubtractionMaps() {
-    return [...document.querySelectorAll('select[data-rv-input="model.opts.spawn"] option:checked')]
-        .filter(el => el.textContent === MapTypeSubtractFromCurrentBoard)
-        .map(el => el.closest('form'));
-}
-
-// Gets all of the "Replace board" maps
-function getReplacementMaps() {
-    return [...document.querySelectorAll('select[data-rv-input="model.opts.spawn"] option:checked')]
-        .filter(el => el.textContent === MapTypeReplaceBoard)
-        .map(el => el.closest('form'));
-}
-
 function inputElementFromMap(map) {
     return map.querySelector(':scope input[data-rv-input="model.opts.map"]');
+}
+
+async function updateSectionMapContent(maps, mapContent, mapToSkip = null) {
+    for (const map of maps) {
+        if (map === mapToSkip) {
+            continue;
+        }
+        await updateMapContent(map, mapContent);
+    }
 }
 
 async function updateMapContent(map, mapContent) {
@@ -195,8 +202,56 @@ async function updateMapContent(map, mapContent) {
     }
 }
 
+function setMapSubmitButtonText(map, pieceIndex) {
+    const saveButton = map.querySelector(':scope button.save_btn');
+    saveButton.textContent = `Save changes for block ${pieceIndex} and up`;
+    saveButton.addEventListener('click', syncMaps);
+    map.querySelector(':scope a.open-map-edit').textContent = `Edit map for block ${pieceIndex}`;
+}
+
+function setAllMapSubmitButtonText(totalSections) {
+    let pieceIndex = 1;
+    const maps = [...document.querySelectorAll('select[data-rv-input="model.opts.spawn"] option:checked')]
+        .filter(el => el.textContent === MapTypeSubtractFromCurrentBoard || el.textContent === MapTypeReplaceBoard)
+        .map(el => el.closest('form'));
+    let mapIndex = 0;
+    for (let section = 1; section <= totalSections; section++) {
+        let sectionBeginningBlockCount = (section - 1) * HowManyBlocksPerSegment + 1;
+        if (sectionBeginningBlockCount > HowManyBlocks) {
+            break;
+        }
+        let sectionFinalBlockCount = section * HowManyBlocksPerSegment;
+        if (sectionFinalBlockCount > HowManyBlocks) {
+            sectionFinalBlockCount = HowManyBlocks;
+        }
+        for (let blockCount = sectionBeginningBlockCount; blockCount <= sectionFinalBlockCount; blockCount++) {
+            mapListsByPieceIndex[blockCount] = new Array();
+            mapListsByPieceIndex[blockCount].push(maps[mapIndex++]);
+        }
+        if (sectionBeginningBlockCount !== 1) {
+            mapListsByPieceIndex[sectionBeginningBlockCount - 1].push(maps[mapIndex]);
+        }
+        mapIndex++;
+        for (let blockCount = sectionBeginningBlockCount; blockCount <= sectionFinalBlockCount; blockCount++) {
+            mapListsByPieceIndex[blockCount].push(maps[mapIndex++]);
+            mapListsByPieceIndex[blockCount].push(maps[mapIndex++]);
+        }
+    }
+    for (const key in mapListsByPieceIndex) {
+        const maps = mapListsByPieceIndex[key];
+        maps.forEach((map) => {
+            const saveButton = map.querySelector(':scope button.save_btn');
+            saveButton.addEventListener('click', syncMaps);
+            saveButton.textContent = `Save changes for block ${pieceIndex} and up`;
+            const editButton = map.querySelector(':scope a.open-map-edit');
+            editButton.textContent = `Edit map for block ${pieceIndex}`;
+        });
+        pieceIndex++;
+    }
+}
+
 // newMap creates a new Map component
-async function newMap(mapType) {
+async function newMap(mapType, pieceIndex) {
     const mapButton = document.querySelector('a[data-field-type=map]');
     mapButton.click();
     await sleep();
@@ -204,12 +259,11 @@ async function newMap(mapType) {
     const mapTypeElement = [...map.querySelectorAll(':scope select[data-rv-input="model.opts.spawn"] option')].filter(el => el.textContent === mapType)[0];
     await selectOption(mapTypeElement);
     if (mapType === MapTypeAddToCurrentBoardOnTop) {
-        await updateMapContent(map, LineClearMapData);
-    } else if (mapType === MapTypeSubtractFromCurrentBoard) {
-        const mapButton = map.querySelector(':scope button.save_btn');
-        mapButton.addEventListener('click', syncMaps);
+        await updateMapContent(map, MapDataLineClear);
+    } else if ((mapType === MapTypeReplaceBoard || mapType === MapTypeSubtractFromCurrentBoard) && pieceIndex > 0) {
+        setMapSubmitButtonText(map, pieceIndex);
     }
-    return latestComponent();
+    return map;
 }
 
 // 28G and no lock delay
@@ -225,6 +279,7 @@ async function newRuleset(rulesetType) {
 }
 
 const ConditionTypePCs = 'PCs';
+const ConditionTypeHolds = 'Holds';
 const ConditionResultTypeGameOver = 'Game over';
 
 // newCondition creates a new Condition component.
@@ -239,50 +294,6 @@ async function newCondition(conditionType, conditionValue, doIfTrue, conditionDo
     await saveCheckBox(doIfTrueElement, doIfTrue);
     await saveInput(doIfTrueElement);
     await selectOption([...condition.querySelectorAll(':scope select[data-rv-input="model.opts.do"] option')].filter(el => el.textContent === conditionDo)[0]);
-}
-
-// cycle goes through all the the steps to make sure the user placed a single piece correctly
-async function cycle(blockCount, queue) {
-    await newQueueChange(queue, true);
-    await newTrigger(TriggerTypeOnSpecificBlockNumber, (blockCount * 2 - 1).toString());
-    const subtractionMap = await newMap(MapTypeSubtractFromCurrentBoard);
-    setMapSubmitButtonText(subtractionMap, blockCount);
-    await newQueueChange(QueueIPiece, true, true);
-    await newMap(MapTypeAddToCurrentBoardOnTop);
-    await newRuleset(RulesetTypeFastDropLock);
-    const judgeTriggerID = `judge_block_${blockCount}`;
-    await newRelativeTrigger(RelativeTriggerTypeAfterLines, 1, judgeTriggerID);
-    await newTrigger(TriggerTypeExternalConditional, judgeTriggerID);
-    await newCondition(ConditionTypePCs, `=${blockCount}`, false, ConditionResultTypeGameOver);
-    const replacementMap = await newMap(MapTypeReplaceBoard);
-    setMapSubmitButtonText(replacementMap, blockCount);
-    await newRuleset(RulesetTypeDefault);
-}
-
-function setMapSubmitButtonText(map, pieceIndex) {
-    const saveButton = map.querySelector(':scope button.save_btn');
-    saveButton.textContent = `Save changes for block ${pieceIndex} and up`;
-    saveButton.addEventListener('click', syncMaps);
-    map.querySelector(':scope a.open-map-edit').textContent = `Edit map for block ${pieceIndex}`;
-}
-
-function setAllMapSubmitButtonText() {
-    let pieceIndex = 1;
-    getSubtractionMaps()
-        .map(el => el.querySelector(':scope button.save_btn'))
-        .forEach(button => button.textContent = `Save changes for block ${pieceIndex++} and up`);
-    pieceIndex = 1;
-    getReplacementMaps()
-        .map(el => el.querySelector(':scope button.save_btn'))
-        .forEach(button => button.textContent = `Save changes for block ${pieceIndex++} and up`);
-    pieceIndex = 1;
-    getSubtractionMaps()
-        .map(el => el.querySelector(':scope a.open-map-edit'))
-        .forEach(button => button.textContent = `Edit map for block ${pieceIndex++}`);
-    pieceIndex = 1;
-    getReplacementMaps()
-        .map(el => el.querySelector(':scope a.open-map-edit'))
-        .forEach(button => button.textContent = `Edit map ${pieceIndex++}`);
 }
 
 const saveButtonOriginalText = [...document.querySelectorAll('#saveAll')].map(el => el.textContent).join('');
@@ -311,47 +322,161 @@ async function resetStatus() {
     await sleep();
 }
 
-// 1 cycle per block in BlockQueue
-async function makeCycles(totalBlocks, queue) {
-    // 11 components per cycle, plus the initial "Before the game" trigger and initial Queue component
-    const expectedComponentCount = 2 + 11 * HowManyBlocks;
-    const componentProgress = async () => await updateStatus(`Generated of ${document.querySelectorAll('span.cid-disp').length}/${expectedComponentCount} components`);
-    // Periodic updates so you know if it's still busy generating stuff
-    const progressInterval = setInterval(componentProgress, 1000);
-    await componentProgress();
-    for (let blockCount = 1; blockCount <= totalBlocks; blockCount++) {
-        await cycle(blockCount, queue);
-        queue = queue.slice(1);
+async function demoCycle(blockCount, demoTriggerID, queue, holdPiece, mapListForBlock) {
+    await newRelativeTrigger(RelativeTriggerTypeTime, PauseHowLongBetweenPieces, demoTriggerID);
+    await newTrigger(TriggerTypeExternalConditional, demoTriggerID);
+    mapListForBlock.push(await newMap(MapTypeReplaceBoard, blockCount));
+    await newQueueChange(queue.slice(1), holdPiece, true);
+}
+
+// cycle goes through all the the steps to make sure the user placed a single piece correctly
+async function cycle(blockCount, queue, holdPiece, holdCount, mapListForBlock) {
+    await newQueueChange(queue, holdPiece, true, false);
+    await newTrigger(TriggerTypeOnSpecificBlockNumber, (blockCount * 2 - 1).toString());
+    mapListForBlock.push(await newMap(MapTypeSubtractFromCurrentBoard, blockCount));
+    await newQueueChange(QueueIPiece, holdPiece, true, true);
+    await newMap(MapTypeAddToCurrentBoardOnTop, null);
+    await newRuleset(RulesetTypeFastDropLock);
+    const judgeTriggerID = `judge_block_${blockCount}`;
+    await newRelativeTrigger(RelativeTriggerTypeLines, 1, judgeTriggerID);
+    await newTrigger(TriggerTypeExternalConditional, judgeTriggerID);
+    await newCondition(ConditionTypePCs, `=${blockCount}`, false, ConditionResultTypeGameOver);
+    await newCondition(ConditionTypeHolds, `=${holdCount}`, false, ConditionResultTypeGameOver);
+    mapListForBlock.push(await newMap(MapTypeReplaceBoard, blockCount));
+    await newRuleset(RulesetTypeDefault);
+}
+
+async function makeDemoCycles(blockCount, totalBlocks, queue, finalTriggerID, mapListsBySection, holdPiece) {
+    for (; blockCount <= totalBlocks; blockCount++) {
+        let triggerSuffix = '';
+        let triggerSection = 1;
+        let demoTriggerID = `demo_block_${blockCount}` + triggerSuffix;
         if (queue[0] === QueueHoldPiece) {
-            queue = queue.replace(new RegExp(QueueHoldPiece, 'g'), '');
+            let swap = queue[1];
+            queue = holdPiece + queue.slice(2);
+            holdPiece = swap;
+            triggerSuffix = `_part_${triggerSection}`;
+            let afterHoldTriggerID = demoTriggerID + triggerSuffix;
+            await newRelativeTrigger(RelativeTriggerTypeTime, PauseHowLongBetweenPieces, afterHoldTriggerID);
+            await newTrigger(TriggerTypeExternalConditional, afterHoldTriggerID);
+            triggerSection++;
+            triggerSuffix = `_part_${triggerSection}`;
+            demoTriggerID = `demo_block_${blockCount}` + triggerSuffix;
+            await newQueueChange(queue, holdPiece, true);
         }
+        if (!(mapListsBySection[blockCount] instanceof Array)) {
+            mapListsBySection[blockCount] = new Array();
+        }
+        await demoCycle(blockCount, demoTriggerID, queue, holdPiece, mapListsBySection[blockCount]);
+        queue = queue.slice(1);
     }
-    await newQueueChange(queue, true);
-    clearInterval(progressInterval);
-    await resetStatus();
-    const editButton = getSubtractionMaps()[newMapIndex].querySelector(':scope a.open-map-edit');
-    editButton.click();
+    await newRelativeTrigger(RelativeTriggerTypeTime, PauseHowLongBetweenPieces * 2, finalTriggerID);
+    return [holdPiece, queue];
 }
 
-async function initUserMode() {
+// 1 cycle per block in BlockQueue
+async function makeCycles(blockCount, totalBlocks, queue, holdPiece, holdCount, mapListsBySection) {
+    for (; blockCount <= totalBlocks; blockCount++) {
+        if (!(mapListsBySection[blockCount] instanceof Array)) {
+            mapListsBySection[blockCount] = new Array();
+        }
+        const shouldHold = queue[0] === QueueHoldPiece;
+        if (shouldHold) {
+            holdCount++;
+        }
+        await cycle(blockCount, queue, holdPiece, holdCount, mapListsBySection[blockCount]);
+        if (shouldHold) {
+            let swap = queue[1];
+            queue = holdPiece + queue.slice(2);
+            holdPiece = swap;
+        }
+        const queueTriggerID = `block_${blockCount + 1}_queue`;
+        await newRelativeTrigger(RelativeTriggerTypeBlocks, 0, queueTriggerID);
+        await newTrigger(TriggerTypeExternalConditional, queueTriggerID);
+        queue = queue.slice(1);
+    }
+    const queueTriggerID = `before_demo_${blockCount}`;
+    await newQueueChange(queue, holdPiece, true, false);
+    await newRelativeTrigger(RelativeTriggerTypeBlocks, 0, queueTriggerID);
+    await newTrigger(TriggerTypeExternalConditional, queueTriggerID);
+    return [queue, holdPiece, holdCount];
+}
+
+async function initUserMode(queue) {
     await newTrigger(TriggerTypeBeforeGame, null);
+    await newQueueChange(queue, QueueHoldPieceNone, true, false);
+    await newTrigger(TriggerTypeOnGameStart, null);
+    await newQueueChange(queue, QueueHoldPieceNone, true, false);
 }
 
+const totalSections = Math.round(HowManyBlocks / HowManyBlocksPerSegment + .5);
+
+function totalComponents() {
+    const initialComponents = 4 - 2;
+    const componentsPerDemoCycle = 4;
+    const componentsPerCycle = 11 + 2;
+    const componentsPerDemoCycleSection = 1 + 2;
+    const componentsPerCycleSection = 3;
+    // Gets number of holds in within HowManyBlocks blocks
+    const totalHolds = (BlockQueue.match(new RegExp(`([ZSJLOIT]H?){${HowManyBlocks}}`))[0].match(/H(?!$)/g) || []).length;
+    const componentsPerHold = 3;
+    return initialComponents +
+        (componentsPerDemoCycle + componentsPerCycle) * HowManyBlocks +
+        (componentsPerDemoCycleSection + componentsPerCycleSection) * totalSections +
+        componentsPerHold * totalHolds;
+}
+
+const mapListsByPieceIndex = {};
 (async function () {
     // If this is a brand-new usermode
     if (latestComponent() === null) {
-        const queue = BlockQueue;
-        await initUserMode();
-        await makeCycles(HowManyBlocks, queue);
+        // 11 components per cycle, plus the initial "Before the game" trigger and initial Queue component
+        const expectedComponentCount = totalComponents();
+        const componentProgress = async () => await updateStatus(`Generated of ${document.querySelectorAll('span.cid-disp').length}/${expectedComponentCount} components`);
+        // Periodic updates so you know if it's still busy generating stuff
+        const progressInterval = setInterval(componentProgress, 1000);
+        await componentProgress();
+        let queue = BlockQueue;
+        await initUserMode(queue);
+        let firstSection = true;
+        let holdPiece = '';
+        let holdCount = 0;
+        let nextQueue;
+        for (let section = 1; section <= totalSections; section++) {
+            let sectionBeginningBlockCount = (section - 1) * HowManyBlocksPerSegment + 1;
+            let sectionFinalBlockCount = section * HowManyBlocksPerSegment;
+            if (sectionFinalBlockCount > HowManyBlocks) {
+                sectionFinalBlockCount = HowManyBlocks;
+            }
+            let playTriggerID = `play_block_${sectionBeginningBlockCount}`;
+            await makeDemoCycles(sectionBeginningBlockCount, sectionFinalBlockCount, queue, playTriggerID, mapListsByPieceIndex, holdPiece);
+            await newTrigger(TriggerTypeExternalConditional, playTriggerID);
+            let transitionMap = await newMap(MapTypeReplaceBoard, sectionBeginningBlockCount - 1);
+            if (firstSection) {
+                firstSection = false;
+            } else {
+                mapListsByPieceIndex[sectionBeginningBlockCount - 1].push(transitionMap);
+            }
+            const returnValue = await makeCycles(sectionBeginningBlockCount, sectionFinalBlockCount, queue, holdPiece, holdCount, mapListsByPieceIndex);
+            nextQueue = returnValue[0];
+            holdPiece = returnValue[1];
+            holdCount = returnValue[2];
+            queue = nextQueue;
+        }
+        // Remove the relative trigger and trigger at the end, trigger ID block_#_queue
+        await removeComponent(latestComponent());
+        await removeComponent(latestComponent());
+        const editButton = mapListsByPieceIndex[newMapIndex][0].querySelector(':scope a.open-map-edit');
+        editButton.click();
+        clearInterval(progressInterval);
+        await resetStatus();
     } else {
         // Otherwise, still add stuff for editing map sequences
-        getSubtractionMaps()
-            .map(el => el.querySelector(':scope button.save_btn'))
-            .forEach(mapButton => mapButton.addEventListener('click', syncMaps));
-        getReplacementMaps()
-            .map(el => el.querySelector(':scope button.save_btn'))
-            .forEach(mapButton => mapButton.addEventListener('click', syncMaps));
-        setAllMapSubmitButtonText();
+        setAllMapSubmitButtonText(totalSections);
     }
 })();
-}).toString().match(/^function \(\) \{((.|[\n\r])*)}$/)[1];
+}
+
+document.body.appendChild(document.createElement('script')).textContent = setupTrainingMaker.toString().match(/^function setupTrainingMaker\(\) \{((.|[\n\r])*)}$/)[1];
+// Run the function instead of injecting if you need to debug/set breakpoints
+//setupTrainingMaker();
