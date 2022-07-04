@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Setup Training Maker
+// @name         Jstris Tutor Maker
 // @namespace    http://tampermonkey.net/
 // @version      0.0.0
 // @description  Helps you make a Jstris usermode for placing a queue of pieces in the right spots
@@ -24,6 +24,7 @@ function setupTrainingMaker() {
 
     // PauseHowLongBetweenPieces is the number of seconds to pause between steps in tutor mode
     const PauseHowLongBetweenPieces = 1;
+
 
     // Keeps the page from locking up while the components are generated, even when ms is 0
     function sleep() {
