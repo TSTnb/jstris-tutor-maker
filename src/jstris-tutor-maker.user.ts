@@ -454,7 +454,7 @@ function setupTrainingMaker() {
         if (latestComponent() === null) {
             // 11 components per cycle, plus the initial "Before the game" trigger and initial Queue component
             const expectedComponentCount = totalComponents();
-            const componentProgress = async () => await updateStatus(`Generated of ${document.querySelectorAll('span.cid-disp').length}/${expectedComponentCount} components`);
+            const componentProgress = async () => await updateStatus(`Generated ${document.querySelectorAll('span.cid-disp').length}/${expectedComponentCount} components`);
             // Periodic updates so you know if it's still busy generating stuff
             const progressInterval = setInterval(componentProgress, 1000);
             await componentProgress();
