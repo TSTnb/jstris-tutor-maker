@@ -17,10 +17,10 @@ function setupTrainingMaker() {
     const BlockQueue = 'TIHLZJOSHOZILHTJSHIJSZTLOIOZJSTLJOLITZSILTSOZJLTJOISZJZLHOHSTISHIJLZOTSLIZTHOJHILHZHOSJHTHIZTOHSJLHTJSZHIOLZSJTOLISHJOIZLTIOS';
 
     // Set HowManyBlocks to the number of blocks the player must use in order to complete your usermode
-    const HowManyBlocks = 101;
+    const HowManyBlocks = 20;
 
     // Set HowManyBlocksPerSegment to 0 to disable the tutor
-    const HowManyBlocksPerSegment = 5;
+    const HowManyBlocksPerSegment = 4;
 
     // PauseHowLongBetweenPieces is the number of seconds to pause between steps in tutor mode
     const PauseHowLongBetweenPieces = 1;
