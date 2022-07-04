@@ -11,15 +11,17 @@
 // ==/UserScript==
 function setupTrainingMaker() {'use strict';
 
-// Set HowManyBlocks to the number of blocks the player must use in order to complete your usermode
-const HowManyBlocks = 15;
-
-const HowManyBlocksPerSegment = 5;
-
-const PauseHowLongBetweenPieces = 1;
-
 // Add an "H" right before the first piece that you are supposed to hold
 const BlockQueue = 'TIHLZJOSHOZILHTJSHIJSZTLOIOZJSTLJOLITZSILTSOZJLTJOISZJZLHOHSTISHIJLZOTSLIZTHOJHILHZHOSJHTHIZTOHSJLHTJSZHIOLZSJTOLISHJOIZLTIOS';
+
+// Set HowManyBlocks to the number of blocks the player must use in order to complete your usermode
+const HowManyBlocks = 101;
+
+// Set HowManyBlocksPerSegment to 0 to disable the tutor
+const HowManyBlocksPerSegment = 5;
+
+// PauseHowLongBetweenPieces is the number of seconds to pause between steps in tutor mode
+const PauseHowLongBetweenPieces = 1;
 
 // Keeps the page from locking up while the components are generated, even when ms is 0
 function sleep() {
@@ -220,19 +222,25 @@ function setAllMapSubmitButtonText(totalSections) {
         if (sectionBeginningBlockCount > HowManyBlocks) {
             break;
         }
-        let sectionFinalBlockCount = section * HowManyBlocksPerSegment;
+        let sectionFinalBlockCount = HowManyBlocksPerSegment > 0 ? section * HowManyBlocksPerSegment : HowManyBlocks;
         if (sectionFinalBlockCount > HowManyBlocks) {
             sectionFinalBlockCount = HowManyBlocks;
         }
-        for (let blockCount = sectionBeginningBlockCount; blockCount <= sectionFinalBlockCount; blockCount++) {
-            mapListsByPieceIndex[blockCount] = new Array();
-            mapListsByPieceIndex[blockCount].push(maps[mapIndex++]);
+        if (HowManyBlocksPerSegment > 0) {
+            for (let blockCount = sectionBeginningBlockCount; blockCount <= sectionFinalBlockCount; blockCount++) {
+                mapListsByPieceIndex[blockCount] = new Array();
+                mapListsByPieceIndex[blockCount].push(maps[mapIndex++]);
+            }
+            // The map after the tutor that resets the board to the beginning of the section
+            if (sectionBeginningBlockCount !== 1) {
+                mapListsByPieceIndex[sectionBeginningBlockCount - 1].push(maps[mapIndex]);
+            }
+            mapIndex++;
         }
-        if (sectionBeginningBlockCount !== 1) {
-            mapListsByPieceIndex[sectionBeginningBlockCount - 1].push(maps[mapIndex]);
-        }
-        mapIndex++;
         for (let blockCount = sectionBeginningBlockCount; blockCount <= sectionFinalBlockCount; blockCount++) {
+            if (!(mapListsByPieceIndex[blockCount] instanceof Array)) {
+                mapListsByPieceIndex[blockCount] = new Array();
+            }
             mapListsByPieceIndex[blockCount].push(maps[mapIndex++]);
             mapListsByPieceIndex[blockCount].push(maps[mapIndex++]);
         }
@@ -409,17 +417,17 @@ async function initUserMode(queue) {
     await newQueueChange(queue, QueueHoldPieceNone, true, false);
 }
 
-const totalSections = Math.round(HowManyBlocks / HowManyBlocksPerSegment + .5);
+const totalSections = HowManyBlocksPerSegment > 0 ? Math.round(HowManyBlocks / HowManyBlocksPerSegment + .5) : 1;
 
 function totalComponents() {
     const initialComponents = 4 - 2;
-    const componentsPerDemoCycle = 4;
-    const componentsPerCycle = 11 + 2;
-    const componentsPerDemoCycleSection = 1 + 2;
+    const componentsPerDemoCycle = HowManyBlocksPerSegment > 0 ? 4 : 0;
+    const componentsPerCycle = 12 + 2;
+    const componentsPerDemoCycleSection = HowManyBlocksPerSegment > 0 ? (1 + 2) : 0;
     const componentsPerCycleSection = 3;
     // Gets number of holds in within HowManyBlocks blocks
     const totalHolds = (BlockQueue.match(new RegExp(`([ZSJLOIT]H?){${HowManyBlocks}}`))[0].match(/H(?!$)/g) || []).length;
-    const componentsPerHold = 3;
+    const componentsPerHold = HowManyBlocksPerSegment > 0 ? 3 : 0;
     return initialComponents +
         (componentsPerDemoCycle + componentsPerCycle) * HowManyBlocks +
         (componentsPerDemoCycleSection + componentsPerCycleSection) * totalSections +
@@ -444,18 +452,20 @@ const mapListsByPieceIndex = {};
         let nextQueue;
         for (let section = 1; section <= totalSections; section++) {
             let sectionBeginningBlockCount = (section - 1) * HowManyBlocksPerSegment + 1;
-            let sectionFinalBlockCount = section * HowManyBlocksPerSegment;
+            let sectionFinalBlockCount = HowManyBlocksPerSegment > 0 ? section * HowManyBlocksPerSegment : HowManyBlocks;
             if (sectionFinalBlockCount > HowManyBlocks) {
                 sectionFinalBlockCount = HowManyBlocks;
             }
             let playTriggerID = `play_block_${sectionBeginningBlockCount}`;
-            await makeDemoCycles(sectionBeginningBlockCount, sectionFinalBlockCount, queue, playTriggerID, mapListsByPieceIndex, holdPiece);
-            await newTrigger(TriggerTypeExternalConditional, playTriggerID);
-            let transitionMap = await newMap(MapTypeReplaceBoard, sectionBeginningBlockCount - 1);
-            if (firstSection) {
-                firstSection = false;
-            } else {
-                mapListsByPieceIndex[sectionBeginningBlockCount - 1].push(transitionMap);
+            if (HowManyBlocksPerSegment > 0) {
+                await makeDemoCycles(sectionBeginningBlockCount, sectionFinalBlockCount, queue, playTriggerID, mapListsByPieceIndex, holdPiece);
+                await newTrigger(TriggerTypeExternalConditional, playTriggerID);
+                let transitionMap = await newMap(MapTypeReplaceBoard, sectionBeginningBlockCount - 1);
+                if (firstSection) {
+                    firstSection = false;
+                } else {
+                    mapListsByPieceIndex[sectionBeginningBlockCount - 1].push(transitionMap);
+                }
             }
             const returnValue = await makeCycles(sectionBeginningBlockCount, sectionFinalBlockCount, queue, holdPiece, holdCount, mapListsByPieceIndex);
             nextQueue = returnValue[0];
