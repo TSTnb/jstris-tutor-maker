@@ -2,31 +2,38 @@
 // @name         Jstris Tutor Maker
 // @license      BSD-2-Clause
 // @namespace    Jstris Tutor Maker
-// @version      0.0.1
+// @version      0.1.0
 // @description  Helps you make a Jstris usermode for placing a queue of pieces in the right spots
 // @author       TSTman
-// @website      https://github.com/TSTman/jstris-tutor-maker/
 // @match        https://jstris.jezevec10.com/usermodes/create*
 // @match        https://jstris.jezevec10.com/usermodes/*/edit*
 // @icon         https://jstris.jezevec10.com/favicon.ico
 // @grant        none
 // ==/UserScript==
 
+import {Page, Pages} from "tetris-fumen/lib/decoder";
+import {Mino} from "tetris-fumen";
+import {PlayField} from "tetris-fumen/lib/inner_field";
+import {Operation as FieldOperation} from "tetris-fumen/lib/field";
+import {Quiz} from "tetris-fumen/lib/quiz";
+
 function setupTrainingMaker() {
     'use strict';
 
-    // Add an "H" right before the first piece that you are supposed to hold
-    const BlockQueue = 'TIHLZJOSHOZILHTJSHIJSZTLOIOZJSTLJOLITZSILTSOZJLTJOISZJZLHOHSTISHIJLZOTSLIZTHOJHILHZHOSJHTHIZTOHSJLHTJSZHIOLZSJTOLISHJOIZLTIOS';
+    // ExampleFumen is an example of a Fumen that will work with Jstris Tutor Maker.
+    const ExampleFumen = 'v115@vhP1OY/BFLDmClcJSAVDEHBEooRBUoAVBpizPCP9aF?DpCmPCTentC6OMgCJnzPCzOUPCvS9wCad9VCU9aFDqCmPCP?ujFDqXMgCzeltCp/TFDv+TWCpXegCK+TFDPt/wCpXegCz/D?xCKtbMCviLuCq+KWCJtHgCpXExCJ3zBApmBckBWyBToBvqB?CjBcaBZmBSeB7TBGPB/gBVcBWKB3RB';
 
-    // Set HowManyBlocks to the number of blocks the player must use in order to complete your usermode
-    const HowManyBlocks = 20;
+    // Set HowManyBlocksPerSection to 0 to disable the tutor
+    let HowManyBlocksPerSection = 4;
 
-    // Set HowManyBlocksPerSegment to 0 to disable the tutor
-    const HowManyBlocksPerSegment = 4;
+    // Only change from '' if you are not using Fumen. Add an "H" right before the first piece that you are supposed to hold
+    let BlockQueue = '';
+
+    // Only change from 0 if you are not using Fumen. Set HowManyBlocks to the number of blocks the player must use in order to complete your usermode
+    let HowManyBlocks = 0;
 
     // PauseHowLongBetweenPieces is the number of seconds to pause between steps in tutor mode
     const PauseHowLongBetweenPieces = 1;
-
 
     // Keeps the page from locking up while the components are generated, even when ms is 0
     function sleep() {
@@ -168,10 +175,10 @@ function setupTrainingMaker() {
                     foundMapYet = true;
                     newMapIndex = sectionIndex;
                     await updateSectionMapContent(maps, newMapContent, changedMap);
-                    const totalMapCount = HowManyBlocksPerSegment * 3 - blockIndex;
+                    const totalMapCount = HowManyBlocksPerSection * 3 - blockIndex;
                     const mapSyncProgress = async () => await updateStatus(`Syncing maps (${blockIndex}/${totalMapCount})`);
                     // Periodic updates so you know if it's still busy generating stuff
-                    progressInterval = setInterval(mapSyncProgress,
+                    progressInterval = window.setInterval(mapSyncProgress,
                         1000);
                     await mapSyncProgress();
                 }
@@ -199,6 +206,9 @@ function setupTrainingMaker() {
     }
 
     async function updateSectionMapContent(maps: Array<HTMLFormElement>, mapContent: string, mapToSkip: HTMLFormElement = null) {
+        if (!(maps instanceof Array)) {
+            return;
+        }
         for (const map of maps) {
             if (map === mapToSkip) {
                 continue;
@@ -229,23 +239,30 @@ function setupTrainingMaker() {
 
         let mapIndex = 0;
 
-        for (let section = 1; section <= totalSections; section++) {
-            let sectionBeginningBlockCount = (section - 1) * HowManyBlocksPerSegment + 1;
+        let blockCount: number;
+        for (let section = 1; section <= totalSections && mapIndex + 1 < maps.length; section++) {
+            let sectionBeginningBlockCount = (section - 1) * HowManyBlocksPerSection + 1;
             if (sectionBeginningBlockCount > HowManyBlocks) {
                 break;
             }
-            let sectionFinalBlockCount = HowManyBlocksPerSegment > 0 ? section * HowManyBlocksPerSegment : HowManyBlocks;
+            let sectionFinalBlockCount = HowManyBlocksPerSection > 0 ? section * HowManyBlocksPerSection : HowManyBlocks;
             if (sectionFinalBlockCount > HowManyBlocks) {
                 sectionFinalBlockCount = HowManyBlocks;
             }
-            if (HowManyBlocksPerSegment > 0) {
-                for (let blockCount = sectionBeginningBlockCount; blockCount <= sectionFinalBlockCount; blockCount++) {
+            if (HowManyBlocksPerSection > 0) {
+                for (blockCount = sectionBeginningBlockCount; blockCount <= sectionFinalBlockCount; blockCount++) {
                     mapListsByPieceIndex[blockCount] = new Array<HTMLFormElement>();
-                    mapListsByPieceIndex[blockCount].push(maps[mapIndex++]);
+                    const map = maps[mapIndex++];
+                    if (map instanceof HTMLFormElement) {
+                        mapListsByPieceIndex[blockCount].push(map);
+                    }
                 }
                 // The map after the tutor that resets the board to the beginning of the section
                 if (sectionBeginningBlockCount !== 1) {
-                    mapListsByPieceIndex[sectionBeginningBlockCount - 1].push(maps[mapIndex]);
+                    const map = maps[mapIndex];
+                    if (map instanceof HTMLFormElement) {
+                        mapListsByPieceIndex[sectionBeginningBlockCount - 1].push(map);
+                    }
                 }
                 mapIndex++;
             }
@@ -253,9 +270,27 @@ function setupTrainingMaker() {
                 if (!(mapListsByPieceIndex[blockCount] instanceof Array)) {
                     mapListsByPieceIndex[blockCount] = new Array<HTMLFormElement>();
                 }
-                mapListsByPieceIndex[blockCount].push(maps[mapIndex++]);
-                mapListsByPieceIndex[blockCount].push(maps[mapIndex++]);
+                let map = maps[mapIndex++];
+                if (map instanceof HTMLFormElement) {
+                    mapListsByPieceIndex[blockCount].push(map);
+                }
+                map = maps[mapIndex++];
+                if (map instanceof HTMLFormElement) {
+                    mapListsByPieceIndex[blockCount].push(map);
+                }
             }
+        }
+        --blockCount;
+        if (blockCount < HowManyBlocks) {
+            HowManyBlocks = blockCount;
+        }
+        if (blockCount === HowManyBlocks && mapIndex + 1 === maps.length) {
+            const map = maps[mapIndex++];
+            if (map instanceof HTMLFormElement) {
+                mapListsByPieceIndex[blockCount].push(map);
+            }
+        } else {
+            ''.toString();
         }
 
         for (const key in mapListsByPieceIndex) {
@@ -318,12 +353,16 @@ function setupTrainingMaker() {
         await selectOption([...condition.querySelectorAll(':scope select[data-rv-input="model.opts.do"] option')].filter(el => el.textContent === conditionDo)[0]);
     }
 
+    function saveAllButton(): HTMLAnchorElement {
+        return document.querySelector('#saveAll') as HTMLAnchorElement;
+    }
+
     const saveButtonOriginalText = [...document.querySelectorAll('#saveAll')].map(el => el.textContent).join('');
     const ClassButtonSuccess = 'btn-success';
     const ClassButtonDanger = 'btn-danger';
 
     async function updateStatus(statusText) {
-        const saveButton = document.querySelector('#saveAll');
+        const saveButton = saveAllButton();
         if (!(saveButton instanceof HTMLElement)) {
             return;
         }
@@ -334,7 +373,7 @@ function setupTrainingMaker() {
     }
 
     async function resetStatus() {
-        const saveButton = document.querySelector('#saveAll');
+        const saveButton = saveAllButton();
         if (!(saveButton instanceof HTMLElement)) {
             return;
         }
@@ -431,34 +470,132 @@ function setupTrainingMaker() {
         await newQueueChange(queue, QueueHoldPieceNone, true, false);
     }
 
-    const totalSections = HowManyBlocksPerSegment > 0 ? Math.round(HowManyBlocks / HowManyBlocksPerSegment + .5) : 1;
+    function setTotalSections(): void {
+        totalSections = HowManyBlocksPerSection > 0 ? Math.round(HowManyBlocks / HowManyBlocksPerSection + .5) : 1;
+    }
+
+    let totalSections;
 
     function totalComponents()/*: number*/ {
         const initialComponents = 4 - 2;
-        const componentsPerDemoCycle = HowManyBlocksPerSegment > 0 ? 4 : 0;
+        const componentsPerDemoCycle = HowManyBlocksPerSection > 0 ? 4 : 0;
         const componentsPerCycle = 12 + 2;
-        const componentsPerDemoCycleSection = HowManyBlocksPerSegment > 0 ? (1 + 2) : 0;
+        const componentsPerDemoCycleSection = HowManyBlocksPerSection > 0 ? (1 + 2) : 0;
         const componentsPerCycleSection = 3;
         // Gets number of holds in within HowManyBlocks blocks
         const totalHolds = (BlockQueue.match(new RegExp(`([ZSJLOIT]H?){${HowManyBlocks}}`))[0].match(/H(?!$)/g) || []).length
-        const componentsPerHold = HowManyBlocksPerSegment > 0 ? 3 : 0;
+        const componentsPerHold = HowManyBlocksPerSection > 0 ? 3 : 0;
         return initialComponents +
             (componentsPerDemoCycle + componentsPerCycle) * HowManyBlocks +
             (componentsPerDemoCycleSection + componentsPerCycleSection) * totalSections +
             componentsPerHold * totalHolds;
     }
 
+
+    function fumenSaveButton(): HTMLButtonElement {
+        return document.querySelector('div.fumen-section button.load-fumen') as HTMLButtonElement;
+    }
+
+    function newDiv(parentElement: HTMLElement, ...classes: Array<string>): HTMLDivElement {
+        const row: HTMLDivElement = document.createElement('div');
+        row.classList.add(...classes);
+        if (parentElement instanceof HTMLElement) {
+            parentElement.appendChild(row);
+        }
+        return row;
+    }
+
+    const sectionID: string = 'blocks-per-section';
+
+    async function fumenSection() {
+        const fumenSection: HTMLDivElement = newDiv(null, 'fumen-section', 'col-sm-10');
+        const mainRow: HTMLDivElement = newDiv(fumenSection, 'row');
+
+        const buttonCol: HTMLDivElement = newDiv(mainRow, 'col-sm-2');
+        const loadFumenRow: HTMLDivElement = newDiv(buttonCol, 'row')
+        const loadFumenButton: HTMLButtonElement = document.createElement('button');
+        loadFumenButton.classList.add('load-fumen');
+        loadFumenButton.textContent = 'Load fumen';
+        loadFumenButton.addEventListener('click', loadFumenToMaps);
+        loadFumenButton.classList.add(...['col-sm-12', 'btn', 'btn-sm', 'btn-warning', 'control-label'])
+        loadFumenRow.appendChild(loadFumenButton);
+
+        const exampleFumenRow: HTMLDivElement = newDiv(buttonCol, 'row')
+        const exampleFumenButton: HTMLButtonElement = document.createElement('button');
+        exampleFumenButton.classList.add('example-fumen');
+        exampleFumenButton.textContent = 'Example fumen';
+        exampleFumenButton.addEventListener('click', async () => await saveTextInput(fumenInput, ExampleFumen));
+        exampleFumenButton.classList.add(...['col-sm-12', 'btn', 'btn-sm', 'btn-info', 'control-label'])
+        exampleFumenRow.appendChild(exampleFumenButton);
+
+        const inputsContainer: HTMLDivElement = newDiv(mainRow, 'col-sm-10');
+        const fumenContainer: HTMLDivElement = newDiv(inputsContainer, 'form-group')
+        const fumenInput: HTMLInputElement = document.createElement('input');
+        const inputAttributes = {
+            id: 'fumen-input',
+            placeholder: 'Enter fumen here',
+            class: 'form-control',
+            type: 'text',
+            autocomplete: 'off',
+            autocorrect: 'off',
+            autocapitalize: 'off',
+            spellcheck: 'false'
+        };
+        for (const attribute in inputAttributes) {
+            fumenInput.setAttribute(attribute, inputAttributes[attribute]);
+        }
+        fumenContainer.appendChild(fumenInput);
+
+        const sectionContainer: HTMLDivElement = newDiv(inputsContainer, 'form-group')
+        const sectionLabel: HTMLLabelElement = document.createElement('label');
+        sectionLabel.textContent = 'Blocks per stage';
+        sectionLabel.classList.add('col-sm-3', 'control-label');
+        sectionLabel.setAttribute('for', sectionID)
+        sectionContainer.appendChild(sectionLabel);
+        const selectContainer = newDiv(sectionContainer, 'col-sm-5');
+        const sectionSelect: HTMLSelectElement = document.createElement('select');
+        sectionSelect.classList.add('form-control');
+        sectionSelect.id = sectionID;
+        for (let optionValue = 0; optionValue <= 10; optionValue++) {
+            const option: HTMLOptionElement = document.createElement('option');
+            option.value = optionValue.toString();
+            option.textContent = optionValue.toString();
+            if (optionValue === 0) {
+                option.textContent += ' (challenge mode)';
+            } else if (optionValue === 4) {
+                option.textContent += ' (default)';
+                option.selected = true;
+            }
+            sectionSelect.appendChild(option);
+        }
+        sectionContainer.appendChild(selectContainer).appendChild(sectionSelect);
+
+        fumenSection.appendChild(mainRow);
+        const saveButtonDiv: HTMLDivElement = saveAllButton().parentNode as HTMLDivElement;
+        saveButtonDiv.classList.remove('col-sm-12');
+        saveButtonDiv.classList.add('col-sm-2');
+        saveButtonDiv.parentNode.parentNode.insertBefore(fumenSection, saveButtonDiv.parentNode);
+        fumenInput.focus();
+
+        return loadFumenButton;
+    }
+
     const mapListsByPieceIndex: Object = {};
 
-    (async function () {
-
+    async function loadComponents() {
+        let fumenButton = fumenSaveButton();
+        if (!(fumenButton instanceof HTMLButtonElement)) {
+            fumenButton = await fumenSection();
+        }
+        setTotalSections();
         // If this is a brand-new usermode
-        if (latestComponent() === null) {
-            // 11 components per cycle, plus the initial "Before the game" trigger and initial Queue component
+        if (latestComponent() === null && HowManyBlocks > 0) {
+            fumenButton.classList.add('disabled')
+            fumenButton.setAttribute('disabled', '');
             const expectedComponentCount = totalComponents();
             const componentProgress = async () => await updateStatus(`Generated ${document.querySelectorAll('span.cid-disp').length}/${expectedComponentCount} components`);
             // Periodic updates so you know if it's still busy generating stuff
-            const progressInterval = setInterval(componentProgress, 1000);
+            const progressInterval = window.setInterval(componentProgress, 1000);
             await componentProgress();
 
             let queue = BlockQueue;
@@ -469,13 +606,13 @@ function setupTrainingMaker() {
             let nextQueue;
 
             for (let section = 1; section <= totalSections; section++) {
-                let sectionBeginningBlockCount = (section - 1) * HowManyBlocksPerSegment + 1;
-                let sectionFinalBlockCount = HowManyBlocksPerSegment > 0 ? section * HowManyBlocksPerSegment : HowManyBlocks;
+                let sectionBeginningBlockCount = (section - 1) * HowManyBlocksPerSection + 1;
+                let sectionFinalBlockCount = HowManyBlocksPerSection > 0 ? section * HowManyBlocksPerSection : HowManyBlocks;
                 if (sectionFinalBlockCount > HowManyBlocks) {
                     sectionFinalBlockCount = HowManyBlocks;
                 }
                 let playTriggerID = `play_block_${sectionBeginningBlockCount}`;
-                if (HowManyBlocksPerSegment > 0) {
+                if (HowManyBlocksPerSection > 0) {
                     await makeDemoCycles(sectionBeginningBlockCount, sectionFinalBlockCount, queue, playTriggerID, mapListsByPieceIndex, holdPiece);
                     await newTrigger(TriggerTypeExternalConditional, playTriggerID);
                     let transitionMap: HTMLFormElement = await newMap(MapTypeReplaceBoard, sectionBeginningBlockCount - 1)
@@ -496,16 +633,145 @@ function setupTrainingMaker() {
             await removeComponent(latestComponent());
             await removeComponent(latestComponent());
 
-            const editButton: HTMLAnchorElement = mapListsByPieceIndex[newMapIndex][0].querySelector(':scope a.open-map-edit');
-            editButton.click();
+            //const editButton: HTMLAnchorElement = mapListsByPieceIndex[newMapIndex][0].querySelector(':scope a.open-map-edit');
+            //editButton.click();
 
             clearInterval(progressInterval);
             await resetStatus();
+            fumenButton.classList.remove('disabled')
+            fumenButton.removeAttribute('disabled');
         } else {
             // Otherwise, still add stuff for editing map sequences
             setAllMapSubmitButtonText(totalSections);
         }
+    }
+
+    (async function () {
+        await loadComponents();
     })();
+
+    const JstrisPiece: Object = {
+        'Empty': 0,
+        'Z': 1,
+        'L': 2,
+        'O': 3,
+        'S': 4,
+        'I': 5,
+        'J': 6,
+        'T': 7,
+        'Gray': 8,
+    }
+
+    const JstrisPieceByFumenPiece: Object = {};
+
+    function mapFumenPiecesToJstrisPieces(fumen) {
+        for (let piece in JstrisPiece) {
+            JstrisPieceByFumenPiece[fumen.Piece[piece]] = JstrisPiece[piece];
+        }
+    }
+
+    function blockQueueFromPages(fumen, pages: Pages): string {
+        let blockQueue: string = '';
+        let quiz: Quiz;
+        let usedNextPiece: boolean;
+        for (const page of pages) {
+            usedNextPiece = false;
+            // Having an active mino is nice but not required
+            const activeMino: Mino = page.mino();
+            if (!page.flags.quiz) {
+                if (activeMino instanceof fumen.Mino) {
+                    blockQueue += activeMino.type;
+                }
+                continue;
+            }
+            quiz = new fumen.Quiz(page.comment);
+            let quizPiece: string = quiz['current'];
+            let holdPiece: string = quiz['hold'];
+            if (activeMino instanceof fumen.Mino && activeMino.type !== quizPiece) {
+                blockQueue += 'H';
+                if (holdPiece === '') {
+                    quizPiece += quiz['next'];
+                    usedNextPiece = true;
+                }
+            }
+            blockQueue += quizPiece;
+        }
+        if (quiz instanceof fumen.Quiz) {
+            let nextPieces = quiz.getNextPieces().map(fumen.parsePieceName).join('');
+            if (usedNextPiece) {
+                nextPieces = nextPieces.slice(1);
+            }
+            blockQueue += nextPieces;
+        }
+        return blockQueue;
+    }
+
+    async function loadFumenToMaps() {
+        const fumenButton: HTMLButtonElement = fumenSaveButton();
+        fumenButton.classList.add('btn-warning');
+        fumenButton.classList.remove('btn-success');
+        fumenButton.textContent = 'Fumen loading...';
+        let fumen = new Fumen();
+        mapFumenPiecesToJstrisPieces(fumen);
+
+        let index = 1;
+        let inputElement: HTMLInputElement = document.querySelector('#fumen-input');
+        const pages: Pages = fumen.decode(inputElement.value);
+        BlockQueue = blockQueueFromPages(fumen, pages);
+        if (BlockQueue.length > 0 && HowManyBlocks === 0) {
+            HowManyBlocks = pages.length;
+        } else {
+
+        }
+        HowManyBlocksPerSection = parseInt((document.querySelector(`#${sectionID}`) as HTMLSelectElement).value);
+        // BlockQueue length must be at least 1 greater HowManyBlocks
+        if (BlockQueue.length === HowManyBlocks) {
+            BlockQueue += 'I';
+        }
+        await loadComponents();
+        for (const page of pages) {
+            if (page.index > Object.keys(mapListsByPieceIndex).length) {
+                break;
+            }
+            await updateSectionMapContent(mapListsByPieceIndex[index++], fumenToMapData(fumen, page));
+        }
+        fumenButton.classList.add('btn-success');
+        fumenButton.classList.remove('btn-warning');
+        fumenButton.textContent = 'Fumen loaded!';
+    }
+
+    function fumenToMapData(fumen, page: Page): string {
+        const field: PlayField = page['_field'].field;
+        const fieldPieces: Array<number> = field['pieces'];
+        const rowCount = 20;
+        const columnCount = 10;
+        const fieldSize = rowCount * columnCount / 2; // 2 pieces per byte
+        const mapDataBuffer: ArrayBuffer = new ArrayBuffer(fieldSize);
+        const mapDataField: Uint8Array = new Uint8Array(mapDataBuffer);
+        const operation: FieldOperation = page.operation;
+        let hasActiveMino: boolean = operation instanceof Object;
+        // Having an active mino is nice but not required
+        if (hasActiveMino) {
+            const filledMino: Mino = page.mino();
+            field.fill({
+                type: fumen.parsePiece(operation.type),
+                rotation: fumen.parseRotation(operation.rotation),
+                x: operation.x,
+                y: operation.y
+            });
+            for (const {x, y} of filledMino.positions()) {
+                field.set(x, y, fumen.parsePiece(filledMino.type));
+            }
+        }
+        let fieldIndex = fieldSize;
+        for (let row = 0; row < rowCount; row++) {
+            for (let column = columnCount - 2; column >= 0; column -= 2) {
+                mapDataField[--fieldIndex] = JstrisPieceByFumenPiece[fieldPieces[columnCount * row + column]] << 4 |
+                    JstrisPieceByFumenPiece[fieldPieces[columnCount * row + column + 1]];
+            }
+        }
+        return window.btoa(String.fromCharCode.apply(null, mapDataField));
+    }
 
     function Fumen() {
         // From https://github.com/knewjade/tetris-fumen/tree/4a77d0dc52
