@@ -1,14 +1,15 @@
 {
   "compilerOptions": {
-    "outDir": "build/",
+    "moduleResolution": "Node",
     "lib": [
       "ES2021",
       "dom",
       "dom.iterable"
     ],
     "newLine": "lf",
+    "outDir": "build/",
     "pretty": true,
     "removeComments": false,
-    "target": "ES2021",
+    "target": "ES2021"
   }
 }
