@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         Jstris Tutor Maker
 // @license      BSD-2-Clause
-// @namespace    http://tampermonkey.net/
+// @namespace    Jstris Tutor Maker
 // @version      0.0.1
 // @description  Helps you make a Jstris usermode for placing a queue of pieces in the right spots
 // @author       TSTman
+// @website      https://github.com/TSTman/jstris-tutor-maker/
 // @match        https://jstris.jezevec10.com/usermodes/create*
 // @match        https://jstris.jezevec10.com/usermodes/*/edit*
 // @icon         https://jstris.jezevec10.com/favicon.ico
