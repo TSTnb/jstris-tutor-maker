@@ -2,15 +2,19 @@
 // @name         Jstris Tutor Maker
 // @license      BSD-2-Clause
 // @namespace    Jstris Tutor Maker
-// @version      0.2.0
+// @version      0.2.1
 // @description  Helps you make a Jstris usermode for placing a queue of pieces in the right spots
 // @author       TSTman
 // @match        https://jstris.jezevec10.com/usermodes/create*
 // @icon         https://jstris.jezevec10.com/favicon.ico
 // @grant        none
 // ==/UserScript==
-function setupTrainingMaker() {'use strict';
+function setupTrainingMaker() {
+    'use strict';
     // Uncomment an ExampleFumen below (only 1 at a time) to see how it works with Jstris Tutor Maker.
+
+    // 3 bags of fesh sprint
+    let ExampleFumen = 'v115@vhU2OY9BFLDmClcJSAVDEHBEooRBPoAVBKNUFDU+Dx?CaeHgCzuPFDMXltCTXNPC0XEWCadNPCvuLuCMHmPCpyTxCa?eHgCsvTxCJnzPCJ3TWC6ujWCpvbgCU3jFDK+DxCzyKxCKez?PCMdFgC6OOMCvintC6P9VCa3TxCsAAAAzkBifB0sB9tBXjB?plBqrBFiBJmB+tBsrBnsBTpBOrBNqB6qBTpBxrBHtBMtB';
 
     // Test single line clears:
     //let ExampleFumen = 'v115@vhJSSYtAFLDmClcJSAVDEHBEooRBMoAVBU3LMC6f/w?CpHLWCTO1LCJO1LCJO1LCpAAAA1wBTpB3qBxpBUsBWtBOmB?FqBctB';
@@ -25,7 +29,7 @@ function setupTrainingMaker() {'use strict';
     //let ExampleFumen = 'v115@vhJ1OY/BFLDmClcJSAVDEHBEooRBUoAVBpizPCP9aF?DpCmPCTentC6OMgCJnzPCzOUPCvS9wCad9VCU9aFDqCmPCP?ujFDqXMgCzeltCp/TFDv+TWCpXegCK+TFDPt/wCpXegCz/D?xCKtbMCviLuCq+KWCJtHgCpXExCJ3zBApmBckBWyBToBvqB?CjBcaBZmBSeB';
 
     // 20 pieces
-    let ExampleFumen = 'v115@vhT1OY/BFLDmClcJSAVDEHBEooRBUoAVBpizPCP9aF?DpCmPCTentC6OMgCJnzPCzOUPCvS9wCad9VCU9aFDqCmPCP?ujFDqXMgCzeltCp/TFDv+TWCpXegCK+TFDPt/wCpXegCz/D?xCKtbMCviLuCq+KWCJtHgCpXExCJ3zBApmBckBWyBToBvqB?CjBcaBZmBSeB7TBGPB/gBVcBWKB3RBcQBNMB6SBTAB';
+    //let ExampleFumen = 'v115@vhT1OY/BFLDmClcJSAVDEHBEooRBUoAVBpizPCP9aF?DpCmPCTentC6OMgCJnzPCzOUPCvS9wCad9VCU9aFDqCmPCP?ujFDqXMgCzeltCp/TFDv+TWCpXegCK+TFDPt/wCpXegCz/D?xCKtbMCviLuCq+KWCJtHgCpXExCJ3zBApmBckBWyBToBvqB?CjBcaBZmBSeB7TBGPB/gBVcBWKB3RBcQBNMB6SBTAB';
 
     // 30 pieces
     //let ExampleFumen = 'v115@vhd1OY/BFLDmClcJSAVDEHBEooRBUoAVBpizPCP9aF?DpCmPCTentC6OMgCJnzPCzOUPCvS9wCad9VCU9aFDqCmPCP?ujFDqXMgCzeltCp/TFDv+TWCpXegCK+TFDPt/wCpXegCz/D?xCKtbMCviLuCq+KWCJtHgCpXExCJ3zBApmBckBWyBToBvqB?CjBcaBZmBSeB7TBGPB/gBVcBWKB3RBcQBNMB6SBTABZnBTX?BcaB+NB/WBNQBCPBWKBTABC7A';
@@ -50,6 +54,7 @@ function setupTrainingMaker() {'use strict';
 
     // HowManyBlocks starts out at 0 and is set after you load a Fumen. It becomes the number of blocks the player must
     // use in order to complete your usermode
+
     let HowManyBlocks = 0;
 
     // Keeps the page from locking up while the components are generated, even though it sleeps for 0 seconds
@@ -913,7 +918,7 @@ function setupTrainingMaker() {'use strict';
         if (page.index > 0) {
             actualPCCounts[page.index + 1] = actualPCCounts[page.index];
         }
-        const maxPiece = Math.max(...pieces.slice(0, rowCount * columnCount));
+        const maxPiece = Math.max(...pieces.slice(0, (rowCount - 1) * columnCount));
         if (maxPiece === 0) {
             actualPCCounts[page.index + 1]++;
         }
