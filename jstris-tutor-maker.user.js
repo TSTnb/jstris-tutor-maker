@@ -195,10 +195,18 @@ function setupTrainingMaker() {'use strict';
     const QueueHoldPiece = 'H';
     const QueueHoldPieceNone = 'NONE';
     const QueueClassBlockFont = 'blockFont';
+    const QUEUE_SIZE_LIMIT = 600;
 
     function buildQueue(holdPiece, queue) {
         const holdPrefix = !hasHold ? [] : [`h=${holdPiece}`];
-        return holdPrefix.concat(queue.replace(new RegExp(QueueHoldPiece, 'g'), '').split('')).join(',');
+        queue = holdPrefix.concat(queue.replace(new RegExp(QueueHoldPiece, 'g'), '').split('')).join(',');
+        if (queue.length >= QUEUE_SIZE_LIMIT) {
+            queue = queue.slice(0, QUEUE_SIZE_LIMIT);
+            if (queue.slice(-1) === ',') {
+                queue = queue.slice(0, -1);
+            }
+        }
+        return queue;
     }
 
     // newQueueChange creates a new Queue Change component
