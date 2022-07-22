@@ -1,6 +1,6 @@
 {
   "name": "setup-training-maker",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "license": "BSD-2-Clause",
   "devDependencies": {
     "tetris-fumen": "^1.1.3"

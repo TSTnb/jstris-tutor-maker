@@ -2,7 +2,7 @@
 // @name         Jstris Tutor Maker
 // @license      BSD-2-Clause
 // @namespace    Jstris Tutor Maker
-// @version      0.2.1
+// @version      0.3.0
 // @description  Helps you make a Jstris usermode for placing a queue of pieces in the right spots
 // @author       TSTman
 // @match        https://jstris.jezevec10.com/usermodes/create*
@@ -64,6 +64,76 @@ function setupTrainingMaker() {
     // use in order to complete your usermode
     let HowManyBlocks = 0;
 
+    abstract class Component {
+        constructor(fieldType: string) {
+            this.id = ++Component.idCounter;
+            this.field_type = fieldType;
+        }
+
+        field_type: string;
+        static idCounter = 0;
+        id: number;
+        opts: object = {};
+    }
+
+    class Condition extends Component {
+        constructor(conditionType: number, conditionValue: string, doIfTrue: boolean, conditionDo: number) {
+            super('cond');
+            this.opts['do'] = conditionDo;
+            this.opts['on'] = doIfTrue;
+            this.opts['check'] = conditionType;
+            this.opts['check2'] = conditionValue;
+        }
+    }
+
+    class MapComponent extends Component {
+        constructor(mapType: number) {
+            super('map');
+            this.opts['spawn'] = mapType;
+        }
+
+        updateContent(content: string): void {
+            if (typeof content !== 'string') {
+                return;
+            }
+            this.opts['map'] = content;
+        }
+    }
+
+    class QueueChange extends Component {
+        constructor(queue: string, replace: boolean) {
+            super('queue');
+            this.opts['queue'] = queue;
+            this.opts['wipe'] = replace;
+        }
+    }
+
+    class RelativeTrigger extends Component {
+        constructor(relativeTriggerType: number, amount: number, triggerID: string) {
+            super('rtrig');
+            this.opts['af'] = relativeTriggerType;
+            this.opts['id'] = triggerID;
+            this.opts['when'] = amount;
+        }
+    }
+
+    class Ruleset extends Component {
+        constructor(ruleset: string) {
+            super('rule');
+            this.opts['rule'] = ruleset;
+        }
+    }
+
+    class Trigger extends Component {
+        constructor(triggerType: number, triggerArg: string | null) {
+            super('trig');
+            this.opts['when'] = triggerType;
+            if (typeof triggerArg === 'string') {
+                this.opts['when2'] = triggerArg;
+            }
+        }
+    }
+
     // Keeps the page from locking up while the components are generated, even though it sleeps for 0 seconds
     function sleep() {
         return new Promise(resolve => setTimeout(resolve, 0));
@@ -87,10 +157,10 @@ function setupTrainingMaker() {
         await sleep();
     }
 
-    const TriggerTypeBeforeGame = 'Before the game';
-    const TriggerTypeOnGameStart = 'On game start';
-    const TriggerTypeOnSpecificBlockNumber = 'On specific block #';
-    const TriggerTypeExternalConditional = 'External/conditional';
+    const TriggerTypeBeforeGame = 0;
+    const TriggerTypeOnSpecificBlockNumber = 3;
+    const TriggerTypeExternalConditional = 7;
+    const TriggerTypeOnGameStart = 10;
 
     async function selectOption(optionElement) {
         const selectElement = optionElement.closest('select');
@@ -120,17 +190,16 @@ function setupTrainingMaker() {
         await sleep();
     }
 
-    // newTrigger creates a new Trigger component
-    async function newTrigger(triggerType: string, triggerArg: string | null) {
-        const triggerButton: HTMLAnchorElement = document.querySelector('a[data-field-type=trig]');
-        document.querySelector('a[data-field-type=trig]');
-        triggerButton.click();
+    let componentList: Component[];
+
+    async function addComponent(component: Component) {
+        componentList.push(component);
         await sleep();
-        const trigger = latestComponent();
-        await selectOption([...trigger.querySelectorAll(':scope select[data-rv-input="model.opts.when"] option')].filter(el => el.textContent === triggerType)[0]);
-        if (typeof triggerArg === 'string') {
-            await saveTextInput(trigger.querySelector(':scope input[data-rv-input="model.opts.when2"]'), triggerArg);
-        }
+    }
+
+    // newTrigger creates a new Trigger component
+    async function newTrigger(triggerType: number, triggerArg: string | null) {
+        await addComponent(new Trigger(triggerType, triggerArg))
     }
 
     const QueueIPiece = 'I';
@@ -144,7 +213,7 @@ function setupTrainingMaker() {
     }
 
     // newQueueChange creates a new Queue Change component
-    async function newQueueChange(queue, holdPiece: string, replace = true, repeat = false, prependPieceToQueue: boolean = false) {
+    async function newQueueChange(queue: string, holdPiece: string, replace = true, repeat = false, prependPieceToQueue: boolean = false) {
         if (holdPiece === '') {
             holdPiece = QueueHoldPieceNone;
         }
@@ -152,40 +221,21 @@ function setupTrainingMaker() {
             queue = 'O' + queue;
         }
         queue = buildQueue(holdPiece, queue);
-        const queueButton: HTMLAnchorElement = document.querySelector('a[data-field-type="queue"]');
-        queueButton.click()
-        await sleep();
-        const queueElement = latestComponent();
-        if (replace) {
-            await saveCheckBox(queueElement.querySelector(':scope input[data-rv-input="model.opts.wipe"]'), replace);
-        }
-        if (repeat) {
-            await saveCheckBox(queueElement.querySelector(':scope input[data-rv-input="model.opts.repeat"]'), repeat);
-        }
-        if (typeof queue === 'string') {
-            const queueField = queueElement.querySelector(':scope input[data-rv-input="model.opts.queue"]');
-            queueField.classList.remove(QueueClassBlockFont);
-            await saveTextInput(queueField, queue);
-        }
+        await addComponent(new QueueChange(queue, replace));
     }
 
-    const RelativeTriggerTypeTime = 'Time';
-    const RelativeTriggerTypeLines = 'Lines';
-    const RelativeTriggerTypeBlocks = 'Blocks';
+    const RelativeTriggerTypeTime = 0;
+    const RelativeTriggerTypeBlocks = 1;
+    const RelativeTriggerTypeLines = 2;
 
     // newRelativeTrigger creates a new Relative Trigger component
-    async function newRelativeTrigger(relativeTriggerType, amount, triggerID) {
-        (document.querySelector('a[data-field-type=rtrig]') as HTMLAnchorElement).click();
-        await sleep();
-        const relativeTrigger = latestComponent();
-        await selectOption([...relativeTrigger.querySelectorAll(':scope select[data-rv-input="model.opts.af"] option')].filter(el => el.textContent === relativeTriggerType)[0]);
-        await saveTextInput(relativeTrigger.querySelector(':scope input[data-rv-input="model.opts.when"]'), amount);
-        await saveTextInput(relativeTrigger.querySelector(':scope input[data-rv-input="model.opts.id"]'), triggerID);
+    async function newRelativeTrigger(relativeTriggerType: number, amount: number, triggerID: string) {
+        await addComponent(new RelativeTrigger(relativeTriggerType, amount, triggerID));
     }
 
-    const MapTypeSubtractFromCurrentBoard = 'Subtract from current board';
-    const MapTypeAddToCurrentBoardOnTop = 'Add to current board (on top)';
-    const MapTypeReplaceBoard = 'Replace board';
+    const MapTypeReplaceBoard = 1;
+    const MapTypeAddToCurrentBoardOnTop = 2;
+    const MapTypeSubtractFromCurrentBoard = 3;
 
     // MapDataLineClear a place for an I piece to complete a 2-line PC. It is used to trigger a line clear after subtracting the expected field from the board, in order to make sure the whole board is clear (there was a PC)
     const MapDataLineClear = 'ERAAAREREREREQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==';
@@ -241,7 +291,7 @@ function setupTrainingMaker() {
         return map.querySelector(':scope input[data-rv-input="model.opts.map"]');
     }
 
-    async function updateSectionMapContent(maps: Array<HTMLFormElement>, mapContent: string, mapToSkip: HTMLFormElement = null) {
+    async function updateSectionMapContent(maps: Array<MapComponent>, mapContent: string, mapToSkip: MapComponent = null) {
         if (!(maps instanceof Array)) {
             return;
         }
@@ -253,11 +303,8 @@ function setupTrainingMaker() {
         }
     }
 
-    async function updateMapContent(map, mapContent) {
-        const mapInput = inputElementFromMap(map);
-        if (mapContent !== null) {
-            await saveTextInput(mapInput, mapContent);
-        }
+    async function updateMapContent(map: MapComponent, mapContent: string) {
+        map.updateContent(mapContent);
     }
 
     function setMapSubmitButtonText(map, pieceIndex) {
@@ -267,7 +314,7 @@ function setupTrainingMaker() {
         map.querySelector(':scope a.open-map-edit').textContent = `Edit map for block ${pieceIndex}`;
     }
 
-    function setAllMapSubmitButtonText(totalSections: number): void {
+    /*function setAllMapSubmitButtonText(totalSections: number): void {
         let pieceIndex = 1;
         const maps = [...document.querySelectorAll('select[data-rv-input="model.opts.spawn"] option:checked')]
             .filter(el => el.textContent === MapTypeSubtractFromCurrentBoard || el.textContent === MapTypeReplaceBoard)
@@ -290,16 +337,16 @@ function setupTrainingMaker() {
                     sectionFinalBlockCount = HowManyBlocks;
                 }
                 for (blockCount = sectionBeginningBlockCount; blockCount <= sectionFinalBlockCount; blockCount++) {
-                    mapListsByPieceIndex[blockCount] = new Array<HTMLFormElement>();
+                    mapListsByPieceIndex[blockCount] = new Array<MapComponent>();
                     const map = maps[mapIndex++];
-                    if (map instanceof HTMLFormElement) {
+                    if (map instanceof MapComponent) {
                         mapListsByPieceIndex[blockCount].push(map);
                     }
                 }
                 // The map after the tutor that resets the board to the beginning of the section
                 if (sectionBeginningBlockCount !== 1) {
                     const map = maps[mapIndex];
-                    if (map instanceof HTMLFormElement) {
+                    if (map instanceof MapComponent) {
                         mapListsByPieceIndex[sectionBeginningBlockCount - 1].push(map);
                     }
                 }
@@ -309,14 +356,14 @@ function setupTrainingMaker() {
             }
             for (let blockCount = sectionBeginningBlockCount; blockCount <= sectionFinalBlockCount; blockCount++) {
                 if (!(mapListsByPieceIndex[blockCount] instanceof Array)) {
-                    mapListsByPieceIndex[blockCount] = new Array<HTMLFormElement>();
+                    mapListsByPieceIndex[blockCount] = new Array<MapComponent>();
                 }
                 let map = maps[mapIndex++];
-                if (map instanceof HTMLFormElement) {
+                if (map instanceof MapComponent) {
                     mapListsByPieceIndex[blockCount].push(map);
                 }
                 map = maps[mapIndex++];
-                if (map instanceof HTMLFormElement) {
+                if (map instanceof MapComponent) {
                     mapListsByPieceIndex[blockCount].push(map);
                 }
             }
@@ -333,14 +380,14 @@ function setupTrainingMaker() {
         }
         if (blockCount === HowManyBlocks && mapIndex + 1 === maps.length) {
             const map = maps[mapIndex++];
-            if (map instanceof HTMLFormElement) {
+            if (map instanceof MapComponent) {
                 mapListsByPieceIndex[blockCount].push(map);
             }
         }
 
         for (const key in mapListsByPieceIndex) {
             const maps = mapListsByPieceIndex[key];
-            maps.forEach((map: HTMLFormElement) => {
+            maps.forEach((map: MapComponent) => {
                 const saveButton = map.querySelector(':scope button.save_btn');
                 saveButton.addEventListener('click', syncMaps);
                 saveButton.textContent = `Save changes for block ${pieceIndex} and up`;
@@ -349,22 +396,16 @@ function setupTrainingMaker() {
             })
             pieceIndex++;
         }
-    }
+    }*/
 
 
     // newMap creates a new Map component
-    async function newMap(mapType: string, pieceIndex: number) {
-        const mapButton: HTMLAnchorElement = document.querySelector('a[data-field-type=map]');
-        mapButton.click();
-        await sleep();
-        const map = latestComponent();
-        const mapTypeElement = [...map.querySelectorAll(':scope select[data-rv-input="model.opts.spawn"] option')].filter(el => el.textContent === mapType)[0]
-        await selectOption(mapTypeElement);
+    async function newMap(mapType: number): Promise<MapComponent> {
+        const map = new MapComponent(mapType);
         if (mapType === MapTypeAddToCurrentBoardOnTop) {
-            await updateMapContent(map, MapDataLineClear);
-        } else if ((mapType === MapTypeReplaceBoard || mapType === MapTypeSubtractFromCurrentBoard) && pieceIndex > 0) {
-            setMapSubmitButtonText(map, pieceIndex)
+            map.updateContent(MapDataLineClear);
         }
+        await addComponent(map);
         return map;
     }
 
@@ -372,31 +413,18 @@ function setupTrainingMaker() {
     const RulesetTypeFastDropLock = JSON.stringify({lockDelay: [0, 5000, 20000], gravityLvl: 28});
     let RulesetTypeDefault = JSON.stringify({});
 
-    async function newRuleset(rulesetType) {
-        const rulesetButton: HTMLAnchorElement = document.querySelector('a[data-field-type=rule]');
-        rulesetButton.click();
-        await sleep();
-        const ruleset = latestComponent();
-        await saveTextAreaInput(ruleset.querySelector(':scope textarea[data-rv-input="model.opts.rule"]'), rulesetType);
+    async function newRuleset(rulesetType: string) {
+        await addComponent(new Ruleset(rulesetType));
     }
 
-    const ConditionTypePCs = 'PCs';
-    const ConditionTypeHolds = 'Holds';
-    const ConditionTypeLines = 'Lines';
-    const ConditionResultTypeGameOver = 'Game over';
+    const ConditionTypePCs = 7;
+    const ConditionTypeHolds = 14;
+    const ConditionTypeLines = 17;
+    const ConditionResultTypeGameOver = 1;
 
     // newCondition creates a new Condition component.
-    async function newCondition(conditionType, conditionValue, doIfTrue, conditionDo) {
-        const conditionButton: HTMLAnchorElement = document.querySelector('a[data-field-type=cond]');
-        conditionButton.click();
-        await sleep();
-        const condition = latestComponent();
-        await selectOption([...condition.querySelectorAll(':scope select[data-rv-input="model.opts.check"] option')].filter(el => el.textContent === conditionType)[0]);
-        await saveTextInput(condition.querySelector(':scope input[data-rv-input="model.opts.check2"]'), conditionValue);
-        const doIfTrueElement = condition.querySelector(':scope input[type="checkbox"][data-rv-input="model.opts.on"]');
-        await saveCheckBox(doIfTrueElement, doIfTrue);
-        await saveInput(doIfTrueElement);
-        await selectOption([...condition.querySelectorAll(':scope select[data-rv-input="model.opts.do"] option')].filter(el => el.textContent === conditionDo)[0]);
+    async function newCondition(conditionType: number, conditionValue: string, doIfTrue: boolean, conditionDo: number) {
+        await addComponent(new Condition(conditionType, conditionValue, doIfTrue, conditionDo));
     }
 
     function saveAllButton(): HTMLAnchorElement {
@@ -429,17 +457,17 @@ function setupTrainingMaker() {
         await sleep();
     }
 
-    async function demoCycle(blockCount: number, demoTriggerID: string, queue: string, holdPiece: string, mapListForBlock: Array<HTMLFormElement>): Promise<void> {
+    async function demoCycle(blockCount: number, demoTriggerID: string, queue: string, holdPiece: string, mapListForBlock: Array<MapComponent>): Promise<void> {
         await newRelativeTrigger(RelativeTriggerTypeTime, PauseHowLongBetweenPieces, demoTriggerID);
         await newTrigger(TriggerTypeExternalConditional, demoTriggerID)
-        mapListForBlock.push(await newMap(MapTypeReplaceBoard, blockCount));
+        mapListForBlock.push(await newMap(MapTypeReplaceBoard));
         await newQueueChange(queue.slice(1), holdPiece, true, false);
     }
 
     // cycle goes through all the the steps to make sure the user placed a single piece correctly
-    async function cycle(blockCount: number, queues: Array<string>, holdPieces: Array<string>, mapListForBlock: Array<HTMLFormElement>): Promise<void> {
+    async function cycle(blockCount: number, queues: Array<string>, holdPieces: Array<string>, mapListForBlock: Array<MapComponent>): Promise<void> {
         await newTrigger(TriggerTypeOnSpecificBlockNumber, (blockCount * 2 - 1).toString());
-        mapListForBlock.push(await newMap(MapTypeSubtractFromCurrentBoard, blockCount));
+        mapListForBlock.push(await newMap(MapTypeSubtractFromCurrentBoard));
         let nextQueue: string;
         let nextHoldPiece: string;
         if (blockCount < BlockQueue.length) {
@@ -450,14 +478,14 @@ function setupTrainingMaker() {
             nextHoldPiece = QueueHoldPieceNone;
         }
         await newQueueChange(QueueIPiece + nextQueue, nextHoldPiece, true, false);
-        await newMap(MapTypeAddToCurrentBoardOnTop, null);
+        await newMap(MapTypeAddToCurrentBoardOnTop);
         await newRuleset(RulesetTypeFastDropLock);
         const judgeTriggerID = `judge_block${blockCount}`;
         await newRelativeTrigger(RelativeTriggerTypeLines, 1, judgeTriggerID)
         await newTrigger(TriggerTypeExternalConditional, judgeTriggerID);
         await newCondition(ConditionTypePCs, `=${blockCount + actualPCCounts[blockCount]}`, false, ConditionResultTypeGameOver);
         await newCondition(ConditionTypeLines, `=${totalLinesCleared[blockCount] + 2 * blockCount}`, false, ConditionResultTypeGameOver);
-        mapListForBlock.push(await newMap(MapTypeReplaceBoard, blockCount));
+        mapListForBlock.push(await newMap(MapTypeReplaceBoard));
         await newRuleset(RulesetTypeDefault);
     }
 
@@ -480,7 +508,7 @@ function setupTrainingMaker() {
                 await newQueueChange(queue, holdPiece, true, false);
             }
             if (!(mapListsBySection[blockCount] instanceof Array)) {
-                mapListsBySection[blockCount] = new Array<HTMLFormElement>();
+                mapListsBySection[blockCount] = new Array<MapComponent>();
             }
             if (typeof fumenWithFullLines[blockCount] === 'string') {
                 triggerSuffix = `_part_${triggerSection}`;
@@ -490,7 +518,7 @@ function setupTrainingMaker() {
                 triggerSection++;
                 triggerSuffix = `_part_${triggerSection}`;
                 demoTriggerID = `demo_block${blockCount}` + triggerSuffix
-                mapsWithFullLines[blockCount] = await newMap(MapTypeReplaceBoard, 0);
+                mapsWithFullLines[blockCount] = await newMap(MapTypeReplaceBoard);
                 await updateMapContent(mapsWithFullLines[blockCount], fumenWithFullLines[blockCount]);
             }
             await demoCycle(blockCount, demoTriggerID, queue, holdPiece, mapListsBySection[blockCount]);
@@ -504,7 +532,7 @@ function setupTrainingMaker() {
     async function makeCycles(blockCount: number, totalBlocks: number, queues: Array<string>, holdPieces: Array<string>, mapListsBySection: Object): Promise<void> {
         for (; blockCount <= totalBlocks; blockCount++) {
             if (!(mapListsBySection[blockCount] instanceof Array)) {
-                mapListsBySection[blockCount] = new Array<HTMLFormElement>();
+                mapListsBySection[blockCount] = new Array<MapComponent>();
             }
             await cycle(blockCount, queues, holdPieces, mapListsBySection[blockCount]);
         }
@@ -705,15 +733,12 @@ function setupTrainingMaker() {
             fumenButton = await fumenSection();
         }
         setTotalSections();
-        // If this is a brand-new usermode
-        if (latestComponent() === null && HowManyBlocks > 0) {
+        if (HowManyBlocks > 0) {
             fumenButton.classList.add('disabled')
             fumenButton.setAttribute('disabled', '');
             const expectedComponentCount = totalComponents(HowManyBlocks, HowManyBlocksPerSection, HowManyDemoBlocks, BlockQueue, true, totalSections);
-            const componentProgress = async () => await updateStatus(`Generated ${document.querySelectorAll('span.cid-disp').length}/${expectedComponentCount} components`);
+            await updateStatus(`Generating components...`);
             // Periodic updates so you know if it's still busy generating stuff
-            const progressInterval = window.setInterval(componentProgress, 1000);
-            await componentProgress();
 
             let firstSection: boolean = true;
 
@@ -735,7 +760,7 @@ function setupTrainingMaker() {
                     }
                     await makeDemoCycles(sectionBeginningBlockCount, sectionFinalBlockCount, queues[sectionBeginningBlockCount], playTriggerID, mapListsByPieceIndex, holdPieces[sectionBeginningBlockCount]);
                     await newTrigger(TriggerTypeExternalConditional, playTriggerID);
-                    let transitionMap: HTMLFormElement = await newMap(MapTypeReplaceBoard, sectionBeginningBlockCount - 1)
+                    let transitionMap: MapComponent = await newMap(MapTypeReplaceBoard)
                     if (firstSection) {
                         firstSection = false;
                     } else {
@@ -752,22 +777,17 @@ function setupTrainingMaker() {
             }
 
             // Remove the relative trigger and trigger at the end, trigger ID block#_queue
-            await removeComponent(latestComponent());
-            await removeComponent(latestComponent());
+            componentList.pop();
+            componentList.pop();
 
             //const editButton: HTMLAnchorElement = mapListsByPieceIndex[newMapIndex][0].querySelector(':scope a.open-map-edit');
             //editButton.click();
 
-            clearInterval(progressInterval);
             if (shouldResetStatus) {
                 await resetStatus();
             }
             fumenButton.classList.remove('disabled')
             fumenButton.removeAttribute('disabled');
-        } else {
-            // Otherwise, still add stuff for editing map sequences
-            // Disabled for now
-            /*setAllMapSubmitButtonText(totalSections);*/
         }
     }
 
@@ -850,6 +870,7 @@ function setupTrainingMaker() {
         totalLinesCleared = Array(pages.length).fill(0);
         actualPCCounts = Array(pages.length).fill(0);
         fumenWithFullLines = {};
+        componentList = [];
         let cumulativeLinesCleared = 0;
         for (const page of pages) {
             if (HowManyBlocks > 0 && page.index >= HowManyBlocks) {
@@ -882,10 +903,30 @@ function setupTrainingMaker() {
             }
             await updateSectionMapContent(mapListsByPieceIndex[index++], fumenToMapData(fumen, page['_field'].field['pieces']));
         }
+        await loadUsermodeForm();
+
         fumenButton.classList.add('btn-success');
         fumenButton.classList.remove('btn-warning');
         fumenButton.textContent = 'Fumen loaded!';
         await resetStatus();
+    }
+
+    async function loadUsermodeForm() {
+        window['lmao'] = JSON.parse(JSON.stringify(componentList));
+        //console.log(window['lmao']);
+        // @ts-ignore
+        const fb = new Formbuilder({selector: '.components-main', bootstrapData: componentList});
+        fb.on('save', function(payload){
+            // @ts-ignore
+            $("#modeData").val(payload);
+            // @ts-ignore
+            $("#modeForm").submit();
+        })
+
+        // @ts-ignore
+        $("#pubSection").hide();
+        ''.toString();
+        await sleep();
     }
 
     let rowCount = 20;
