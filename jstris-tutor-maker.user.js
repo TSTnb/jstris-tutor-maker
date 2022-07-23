@@ -40,14 +40,17 @@ function setupTrainingMaker() {'use strict';
     // Holdless:
     //let ExampleFumen = 'v115@vhFRQYoAFLDmClcJSAVDEHBEooRBJoAVB6ybgCq+yt?C6/7LCUtzPCpOMgCUmBKpBvsBTtB+jf8gg0Ieg0Heh0deFq?QiAFLDmClcJSAVDEHBEooRBUoAVBPtzPCM+9tC6P9wCMHBA?AvhEzpBvrBMjBOkB6lf/ghlIeglIeglZexhQcAFLDmClcJS?AVDEHBEooRBJoAVBUtzPCpOMgCvhAlsfGhAPgHBegWwDCeA?PhHxSgWxDCegWAtxSgWQpxDAegWKe3sQaAFLDmClcJSAVDE?HBEooRBToAVB6P9wCMHBAAvhC0pBmkBxnfNhzhdelrQWAFL?DmClcJSAVDEHBEooRBUoAVBMHBAAvhBCrBTrB';
 
-    // Set HowManyBlocksPerSection to 0 to disable the tutor (enables challenge mode)
+    // IsChallengeMode decides whether this is a Tutor mode or a Challenge mode.
+    let IsChallengeMode = false;
+
+    // HowManyBlocksPerSection decides how often to check if the player's field looks correct.
     let HowManyBlocksPerSection = 7;
 
     // PauseHowLongBetweenPieces is the number of seconds to pause between steps in tutor mode
     let PauseHowLongBetweenPieces = 0.7;
 
-    // Set HowManyDemoBlocks if you want *only some* of the fumen to have Demo Blocks.
-    let HowManyDemoBlocks = 0;
+    // Set HowManyDemoSections if you want *only some* of the sections to have Demo Blocks.
+    let HowManyDemoSections = 0;
 
     // BlockQueue starts out empty and is filled in after you load a Fumen. It adds an "H" before each piece that is held.
     let BlockQueue = '';
@@ -275,16 +278,16 @@ function setupTrainingMaker() {'use strict';
         await sleep();
     }
 
-    async function demoCycle(blockCount, demoTriggerID, queue, holdPiece, mapListForBlock) {
+    async function demoCycle(blockCount, demoTriggerID, queue, mapListForBlock) {
         await newRelativeTrigger(RelativeTriggerTypeTime, PauseHowLongBetweenPieces, demoTriggerID);
         await newTrigger(TriggerTypeExternalConditional, demoTriggerID);
         mapListForBlock.push(await newMap(MapTypeReplaceBoard));
-        await newQueueChange(queue.slice(1), holdPiece, true, false);
+        await newQueueChange(queue.slice(1), demoHoldPieces[blockCount], true, false);
     }
 
     // cycle goes through all the the steps to make sure the user placed a single piece correctly
-    async function cycle(blockCount, queues, holdPieces, mapListForBlock) {
-        await newTrigger(TriggerTypeOnSpecificBlockNumber, (blockCount * 2 - 1).toString());
+    async function cycle(sectionCount, blockCount, queues, holdPieces, mapListForBlock) {
+        await newTrigger(TriggerTypeOnSpecificBlockNumber, (blockCount + sectionCount - 1).toString());
         mapListForBlock.push(await newMap(MapTypeSubtractFromCurrentBoard));
         let nextQueue;
         let nextHoldPiece;
@@ -298,16 +301,17 @@ function setupTrainingMaker() {'use strict';
         await newQueueChange(QueueIPiece + nextQueue, nextHoldPiece, true, false);
         await newMap(MapTypeAddToCurrentBoardOnTop);
         await newRuleset(RulesetTypeFastDropLock);
-        const judgeTriggerID = `judge_block${blockCount}`;
+        const judgeTriggerID = `judge_stage${blockCount}`;
         await newRelativeTrigger(RelativeTriggerTypeLines, 1, judgeTriggerID);
         await newTrigger(TriggerTypeExternalConditional, judgeTriggerID);
-        await newCondition(ConditionTypePCs, `=${blockCount + actualPCCounts[blockCount]}`, false, ConditionResultTypeGameOver);
-        await newCondition(ConditionTypeLines, `=${totalLinesCleared[blockCount] + 2 * blockCount}`, false, ConditionResultTypeGameOver);
+        await newCondition(ConditionTypePCs, `=${sectionCount + actualPCCounts[blockCount]}`, false, ConditionResultTypeGameOver);
+        await newCondition(ConditionTypeLines, `=${totalLinesCleared[blockCount] + 2 * sectionCount}`, false, ConditionResultTypeGameOver);
         mapListForBlock.push(await newMap(MapTypeReplaceBoard));
         await newRuleset(RulesetTypeDefault);
     }
 
-    async function makeDemoCycles(blockCount, totalBlocks, queue, finalTriggerID, mapListsBySection, holdPiece) {
+    async function makeDemoCycles(blockCount, totalBlocks, queue, finalTriggerID, mapListsBySection) {
+        let holdPiece = demoHoldPieces[blockCount];
         for (; blockCount <= totalBlocks; blockCount++) {
             let triggerSuffix = '';
             let triggerSection = 1;
@@ -316,14 +320,6 @@ function setupTrainingMaker() {'use strict';
                 let swap = queue[1];
                 queue = holdPiece + queue.slice(2);
                 holdPiece = swap;
-                triggerSuffix = `_part_${triggerSection}`;
-                let afterHoldTriggerID = demoTriggerID + triggerSuffix;
-                await newRelativeTrigger(RelativeTriggerTypeTime, PauseHowLongBetweenPieces, afterHoldTriggerID);
-                await newTrigger(TriggerTypeExternalConditional, afterHoldTriggerID);
-                triggerSection++;
-                triggerSuffix = `_part_${triggerSection}`;
-                demoTriggerID = `demo_block${blockCount}` + triggerSuffix;
-                await newQueueChange(queue, holdPiece, true, false);
             }
             if (!(mapListsBySection[blockCount] instanceof Array)) {
                 mapListsBySection[blockCount] = new Array();
@@ -339,24 +335,26 @@ function setupTrainingMaker() {'use strict';
                 mapsWithFullLines[blockCount] = await newMap(MapTypeReplaceBoard);
                 await updateMapContent(mapsWithFullLines[blockCount], fumenWithFullLines[blockCount]);
             }
-            await demoCycle(blockCount, demoTriggerID, queue, holdPiece, mapListsBySection[blockCount]);
+            await demoCycle(blockCount, demoTriggerID, queue, mapListsBySection[blockCount]);
             queue = queue.slice(1);
         }
         await newRelativeTrigger(RelativeTriggerTypeTime, PauseHowLongBetweenPieces * 2, finalTriggerID);
-        return [holdPiece, queue];
     }
 
     // 1 cycle per block in BlockQueue
-    async function makeCycles(blockCount, totalBlocks, queues, holdPieces, mapListsBySection) {
-        for (; blockCount <= totalBlocks; blockCount++) {
+    async function makeCycles(sectionCount, blockCount, lastBlockInSection, mapListsBySection) {
+        for (; blockCount <= lastBlockInSection; blockCount++) {
             if (!(mapListsBySection[blockCount] instanceof Array)) {
                 mapListsBySection[blockCount] = new Array();
             }
-            await cycle(blockCount, queues, holdPieces, mapListsBySection[blockCount]);
+            const lastCycleInStage = blockCount === lastBlockInSection;
+            if (lastCycleInStage) {
+                await cycle(sectionCount, blockCount, queues, holdPieces, mapListsBySection[blockCount]);
+            }
         }
-        if (HowManyBlocksPerSection > 0 && blockCount <= HowManyBlocks && blockCount <= HowManyDemoBlocks) {
+        if (!IsChallengeMode && blockCount <= HowManyBlocks && blockCount <= howManyDemoBlocks) {
             const queueTriggerID = `before_demo_${blockCount}`;
-            await newQueueChange(queues[blockCount], holdPieces[blockCount], true, false, true);
+            await newQueueChange(demoQueues[blockCount], demoHoldPieces[blockCount], true, false, true);
             await newRelativeTrigger(RelativeTriggerTypeBlocks, 0, queueTriggerID);
             await newTrigger(TriggerTypeExternalConditional, queueTriggerID);
         }
@@ -373,7 +371,7 @@ function setupTrainingMaker() {'use strict';
     }
 
     function setTotalSections() {
-        totalSections = HowManyBlocksPerSection > 0 ? Math.ceil(HowManyBlocks / HowManyBlocksPerSection) : 1;
+        totalSections = Math.ceil(HowManyBlocks / HowManyBlocksPerSection);
     }
 
     let totalSections;
@@ -436,6 +434,8 @@ function setupTrainingMaker() {'use strict';
     }
 
     const sectionID = 'blocks-per-section';
+    const tutorModeID = 'usermode-type-tutor';
+    const challengeModeID = 'usermode-type-challenge';
 
     async function fumenSection() {
         const fumenSection = newDiv(null, 'fumen-section', 'col-sm-10');
@@ -456,7 +456,7 @@ function setupTrainingMaker() {'use strict';
         exampleFumenButton.classList.add(...['col-sm-12', 'btn', 'btn-sm', 'btn-info', 'control-label']);
         exampleFumenRow.appendChild(exampleFumenButton);
         const inputsContainer = newDiv(mainRow, 'col-sm-10');
-        const fumenContainer = newDiv(inputsContainer, 'form-group');
+        const fumenContainer = newDiv(newDiv(newDiv(inputsContainer, 'form-group'), 'row'), 'col-sm-12');
         const fumenInput = document.createElement('input');
         const inputAttributes = {
             id: 'fumen-input',
@@ -472,29 +472,56 @@ function setupTrainingMaker() {'use strict';
             fumenInput.setAttribute(attribute, inputAttributes[attribute]);
         }
         fumenContainer.appendChild(fumenInput);
-        const sectionContainer = newDiv(inputsContainer, 'form-group');
+        const settingsContainer = newDiv(newDiv(inputsContainer, 'form-group'), 'row');
         const sectionLabel = document.createElement('label');
         sectionLabel.textContent = 'Blocks per stage';
         sectionLabel.classList.add('col-sm-3', 'control-label');
-        sectionLabel.setAttribute('for', sectionID);
-        sectionContainer.appendChild(sectionLabel);
-        const selectContainer = newDiv(sectionContainer, 'col-sm-5');
+        sectionLabel.htmlFor = sectionID;
+        settingsContainer.appendChild(sectionLabel);
+        const selectContainer = newDiv(settingsContainer, 'col-sm-3');
         const sectionSelect = document.createElement('select');
         sectionSelect.classList.add('form-control');
         sectionSelect.id = sectionID;
-        for (let optionValue = 0; optionValue <= 21; optionValue++) {
+        for (let optionValue = 1; optionValue <= 28; optionValue++) {
             const option = document.createElement('option');
             option.value = optionValue.toString();
             option.textContent = optionValue.toString();
-            if (optionValue === 0) {
-                option.textContent += ' (challenge mode)';
-            } else if (optionValue === HowManyBlocksPerSection) {
+            if (optionValue === HowManyBlocksPerSection) {
                 option.textContent += ' (default)';
                 option.selected = true;
             }
             sectionSelect.appendChild(option);
         }
-        sectionContainer.appendChild(selectContainer).appendChild(sectionSelect);
+        settingsContainer.appendChild(selectContainer).appendChild(sectionSelect);
+        const userModeTypeContainer = newDiv(newDiv(settingsContainer, 'col-sm-6'), 'row');
+        const userModeTypeName = 'usermode-type';
+        const tutorModeContainer = newDiv(userModeTypeContainer, 'form-check', 'col-sm-5');
+        const tutorModeRadio = document.createElement('input');
+        tutorModeRadio.classList.add('form-check-input');
+        tutorModeRadio.type = 'radio';
+        tutorModeRadio.name = userModeTypeName;
+        tutorModeRadio.id = tutorModeID;
+        tutorModeRadio.setAttribute('checked', '');
+        tutorModeContainer.appendChild(tutorModeRadio);
+        tutorModeContainer.innerHTML += ' ';
+        const tutorModeLabel = document.createElement('label');
+        tutorModeLabel.textContent = 'Tutor mode';
+        tutorModeLabel.classList.add('form-check-label');
+        tutorModeLabel.htmlFor = tutorModeID;
+        tutorModeContainer.appendChild(tutorModeLabel);
+        const challengeModeContainer = newDiv(userModeTypeContainer, 'form-check', 'col-sm-6');
+        const challengeModeRadio = document.createElement('input');
+        challengeModeRadio.classList.add('form-check-input');
+        challengeModeRadio.type = 'radio';
+        challengeModeRadio.name = userModeTypeName;
+        challengeModeRadio.id = challengeModeID;
+        challengeModeContainer.appendChild(challengeModeRadio);
+        challengeModeContainer.innerHTML += ' ';
+        const challengeModeLabel = document.createElement('label');
+        challengeModeLabel.textContent = 'Challenge mode';
+        challengeModeLabel.classList.add('form-check-label');
+        challengeModeLabel.htmlFor = challengeModeID;
+        challengeModeContainer.appendChild(challengeModeLabel);
         fumenSection.appendChild(mainRow);
         const saveButtonDiv = saveAllButton().parentNode;
         saveButtonDiv.classList.remove('col-sm-12');
@@ -518,22 +545,29 @@ function setupTrainingMaker() {'use strict';
 
     let hasHold;
 
-    function buildQueues(queues, holdPieces, holdPiece) {
+    function buildQueues(holdPiece) {
         let queue = BlockQueue;
         let blockCount = 1;
         while (queue.length > 0) {
-            const shouldHold = queue[0] === QueueHoldPiece;
             queues[blockCount] = queue;
             holdPieces[blockCount] = holdPiece;
+            const shouldHold = queue[0] === QueueHoldPiece;
             if (shouldHold) {
                 let swap = queue[1];
                 queue = holdPiece + queue.slice(2);
                 holdPiece = swap;
             }
+            demoQueues[blockCount] = queue;
+            demoHoldPieces[blockCount] = holdPiece;
             blockCount++;
             queue = queue.slice(1);
         }
     }
+
+    let queues;
+    let holdPieces;
+    let demoQueues;
+    let demoHoldPieces;
 
     async function loadComponents(shouldResetStatus = true) {
         mapListsByPieceIndex = {};
@@ -547,26 +581,25 @@ function setupTrainingMaker() {'use strict';
         if (HowManyBlocks > 0) {
             fumenButton.classList.add('disabled');
             fumenButton.setAttribute('disabled', '');
-            const expectedComponentCount = totalComponents(HowManyBlocks, HowManyBlocksPerSection, HowManyDemoBlocks, BlockQueue, true, totalSections);
+            const expectedComponentCount = totalComponents(HowManyBlocks, HowManyBlocksPerSection, howManyDemoBlocks, BlockQueue, true, totalSections);
             await updateStatus(`Generating components...`);
             // Periodic updates so you know if it's still busy generating stuff
             let firstSection = true;
-            const queues = [];
-            const holdPieces = [];
-            buildQueues(queues, holdPieces, '');
+            queues = [];
+            holdPieces = [];
+            demoQueues = [];
+            demoHoldPieces = [];
+            buildQueues('');
             await initUserMode(queues[1]);
             for (let section = 1; section <= totalSections; section++) {
                 let sectionBeginningBlockCount = (section - 1) * HowManyBlocksPerSection + 1;
-                let sectionFinalBlockCount;
-                let playTriggerID = `play_block${sectionBeginningBlockCount}`;
-                if (HowManyBlocksPerSection > 0 && sectionBeginningBlockCount < HowManyDemoBlocks) {
-                    sectionFinalBlockCount = section * HowManyBlocksPerSection;
-                    if (sectionFinalBlockCount > HowManyDemoBlocks) {
-                        sectionFinalBlockCount = HowManyBlocks;
-                    } else if (sectionFinalBlockCount > HowManyBlocks) {
-                        sectionFinalBlockCount = HowManyBlocks;
-                    }
-                    await makeDemoCycles(sectionBeginningBlockCount, sectionFinalBlockCount, queues[sectionBeginningBlockCount], playTriggerID, mapListsByPieceIndex, holdPieces[sectionBeginningBlockCount]);
+                let playTriggerID = `play_stage${section}`;
+                let sectionFinalBlockCount = section * HowManyBlocksPerSection;
+                if (sectionFinalBlockCount > HowManyBlocks) {
+                    sectionFinalBlockCount = HowManyBlocks;
+                }
+                if (!IsChallengeMode && sectionBeginningBlockCount < howManyDemoBlocks) {
+                    await makeDemoCycles(sectionBeginningBlockCount, sectionFinalBlockCount, demoQueues[sectionBeginningBlockCount], playTriggerID, mapListsByPieceIndex);
                     await newTrigger(TriggerTypeExternalConditional, playTriggerID);
                     let transitionMap = await newMap(MapTypeReplaceBoard);
                     if (firstSection) {
@@ -575,10 +608,8 @@ function setupTrainingMaker() {'use strict';
                         mapListsByPieceIndex[sectionBeginningBlockCount - 1].push(transitionMap);
                     }
                     await newQueueChange(queues[sectionBeginningBlockCount], holdPieces[sectionBeginningBlockCount], true, false);
-                } else {
-                    sectionFinalBlockCount = HowManyBlocks;
                 }
-                await makeCycles(sectionBeginningBlockCount, sectionFinalBlockCount, queues, holdPieces, mapListsByPieceIndex);
+                await makeCycles(section, sectionBeginningBlockCount, sectionFinalBlockCount, mapListsByPieceIndex);
                 if (sectionFinalBlockCount === HowManyBlocks) {
                     break;
                 }
@@ -658,6 +689,9 @@ function setupTrainingMaker() {'use strict';
         return blockQueue;
     }
 
+    // howManyDemoBlocks is a computed field, you don't set it directly
+    let howManyDemoBlocks;
+
     async function loadFumenToMaps() {
         const fumenButton = fumenSaveButton();
         fumenButton.classList.add('btn-warning');
@@ -690,14 +724,17 @@ function setupTrainingMaker() {'use strict';
         if (BlockQueue.length > 0 && HowManyBlocks === 0) {
             HowManyBlocks = pages.length;
         }
-        if (HowManyDemoBlocks === 0) {
-            HowManyDemoBlocks = HowManyBlocks;
-        }
         HowManyBlocksPerSection = parseInt(document.querySelector(`#${sectionID}`).value);
+        if (HowManyDemoSections > 0) {
+            howManyDemoBlocks = HowManyBlocksPerSection * HowManyDemoSections;
+        } else {
+            howManyDemoBlocks = HowManyBlocks;
+        }
         // BlockQueue length must be at least 1 greater HowManyBlocks
         if (BlockQueue.length === HowManyBlocks) {
             BlockQueue += 'I';
         }
+        IsChallengeMode = document.querySelector(`#${challengeModeID}`).checked === true;
         await loadComponents(false);
         for (const page of pages) {
             if (HowManyBlocks > 0 && page.index >= HowManyBlocks) {
@@ -2369,6 +2406,5 @@ function setupTrainingMaker() {'use strict';
     }
 }
 
-document.body.appendChild(document.createElement('script')).textContent = setupTrainingMaker.toString().match(/^function setupTrainingMaker\(\) \{((.|[\n\r])*)}$/)[1];
-// Run the function instead of injecting if you need to debug/set breakpoints
-//setupTrainingMaker();
+//document.body.appendChild(document.createElement('script')).textContent = setupTrainingMaker.toString().match(/^function setupTrainingMaker\(\) \{((.|[\n\r])*)}$/)[1]
+setupTrainingMaker();
