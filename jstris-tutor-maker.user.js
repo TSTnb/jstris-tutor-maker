@@ -129,49 +129,14 @@ function setupTrainingMaker() {'use strict';
         return new Promise(resolve => setTimeout(resolve, 0));
     }
 
-    // latestComponent gets the component that was just generated (assumes it was created by click, not drag)
-    function latestComponent() {
-        const latestComponentLabelSlice = [...document.querySelectorAll('span.cid-disp')].slice(-1);
-        if (latestComponentLabelSlice.length === 0) {
-            return null;
-        }
-        const latestComponentLabel = latestComponentLabelSlice[0];
-        const panelElement = latestComponentLabel.closest('div.panel.panel-primary');
-        return panelElement.querySelector(':scope form');
-    }
-
-    // removeComponent removes the given component.
-    async function removeComponent(component) {
-        const removeButton = component.closest('div[data-cid]').querySelector(':scope a.js-clear');
-        removeButton.click();
-        await sleep();
-    }
-
     const TriggerTypeBeforeGame = 0;
     const TriggerTypeOnSpecificBlockNumber = 3;
     const TriggerTypeExternalConditional = 7;
     const TriggerTypeOnGameStart = 10;
 
-    async function selectOption(optionElement) {
-        const selectElement = optionElement.closest('select');
-        optionElement.selected = true;
-        await saveInput(selectElement);
-    }
-
     async function saveTextInput(element, value) {
         element.value = value;
         element.setAttribute('value', value);
-        await saveInput(element);
-    }
-
-    async function saveTextAreaInput(element, value) {
-        element.textContent = value;
-        element.value = value;
-        await saveInput(element);
-    }
-
-    async function saveCheckBox(element, checked) {
-        element.checked = checked;
         await saveInput(element);
     }
 
@@ -195,7 +160,6 @@ function setupTrainingMaker() {'use strict';
     const QueueIPiece = 'I';
     const QueueHoldPiece = 'H';
     const QueueHoldPieceNone = 'NONE';
-    const QueueClassBlockFont = 'blockFont';
     const QUEUE_SIZE_LIMIT = 600;
 
     function buildQueue(holdPiece, queue) {
@@ -236,53 +200,6 @@ function setupTrainingMaker() {'use strict';
     const MapTypeSubtractFromCurrentBoard = 3;
     // MapDataLineClear a place for an I piece to complete a 2-line PC. It is used to trigger a line clear after subtracting the expected field from the board, in order to make sure the whole board is clear (there was a PC)
     const MapDataLineClear = 'ERAAAREREREREQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==';
-    let newMapIndex = 1;
-    let newMapContent;
-
-    // syncMaps takes the content of the map that was just updated and updates all of the "Replace board" and "Subtract from current board" maps that occur after this map.
-    async function syncMaps() {
-        await updateStatus('Syncing maps...');
-        const changedInput = inputElementFromMap(this.closest('form'));
-        newMapContent = changedInput.value;
-        const changedMap = changedInput.closest('form');
-        let foundMapYet = false;
-        let blockIndex = 0;
-        let sectionIndex = 1;
-        // The initial value suppresses a warning about how it might not have been initialized. But it will always be initialized
-        let progressInterval = 0;
-        for (const key in mapListsByPieceIndex) {
-            const maps = mapListsByPieceIndex[sectionIndex];
-            for (const map of maps) {
-                if (changedMap === map) {
-                    foundMapYet = true;
-                    newMapIndex = sectionIndex;
-                    await updateSectionMapContent(maps, newMapContent, changedMap);
-                    const totalMapCount = HowManyBlocksPerSection * 3 - blockIndex;
-                    const mapSyncProgress = async () => await updateStatus(`Syncing maps (${blockIndex}/${totalMapCount})`);
-                    // Periodic updates so you know if it's still busy generating stuff
-                    progressInterval = window.setInterval(mapSyncProgress, 1000);
-                    await mapSyncProgress();
-                }
-                blockIndex++;
-                if (!foundMapYet) {
-                    continue;
-                }
-                await updateMapContent(map, newMapContent);
-            }
-            sectionIndex++;
-        }
-        clearInterval(progressInterval);
-        newMapIndex++;
-        if (newMapIndex <= Object.keys(mapListsByPieceIndex).length) {
-            const editButton = mapListsByPieceIndex[newMapIndex][0].querySelector(':scope a.open-map-edit');
-            editButton.click();
-        }
-        await resetStatus();
-    }
-
-    function inputElementFromMap(map) {
-        return map.querySelector(':scope input[data-rv-input="model.opts.map"]');
-    }
 
     async function updateSectionMapContent(maps, mapContent, mapToSkip = null) {
         if (!(maps instanceof Array)) {
@@ -299,97 +216,6 @@ function setupTrainingMaker() {'use strict';
     async function updateMapContent(map, mapContent) {
         map.updateContent(mapContent);
     }
-
-    function setMapSubmitButtonText(map, pieceIndex) {
-        const saveButton = map.querySelector(':scope button.save_btn');
-        saveButton.textContent = `Save changes for block ${pieceIndex} and up`;
-        saveButton.addEventListener('click', syncMaps);
-        map.querySelector(':scope a.open-map-edit').textContent = `Edit map for block ${pieceIndex}`;
-    }
-
-    /*function setAllMapSubmitButtonText(totalSections: number): void {
-        let pieceIndex = 1;
-        const maps = [...document.querySelectorAll('select[data-rv-input="model.opts.spawn"] option:checked')]
-            .filter(el => el.textContent === MapTypeSubtractFromCurrentBoard || el.textContent === MapTypeReplaceBoard)
-            .map(el => el.closest('form'));
-
-        let mapIndex = 0;
-
-        let blockCount: number;
-        for (let section = 1; section <= totalSections && mapIndex + 1 < maps.length; section++) {
-            let sectionBeginningBlockCount = (section - 1) * HowManyBlocksPerSection + 1;
-            if (sectionBeginningBlockCount > HowManyBlocks) {
-                break;
-            }
-            let sectionFinalBlockCount;
-            if (HowManyBlocksPerSection > 0 && sectionBeginningBlockCount < HowManyDemoBlocks) {
-                sectionFinalBlockCount = section * HowManyBlocksPerSection;
-                if (sectionFinalBlockCount > HowManyDemoBlocks) {
-                    sectionFinalBlockCount = HowManyBlocks;
-                } else if (sectionFinalBlockCount > HowManyBlocks) {
-                    sectionFinalBlockCount = HowManyBlocks;
-                }
-                for (blockCount = sectionBeginningBlockCount; blockCount <= sectionFinalBlockCount; blockCount++) {
-                    mapListsByPieceIndex[blockCount] = new Array<MapComponent>();
-                    const map = maps[mapIndex++];
-                    if (map instanceof MapComponent) {
-                        mapListsByPieceIndex[blockCount].push(map);
-                    }
-                }
-                // The map after the tutor that resets the board to the beginning of the section
-                if (sectionBeginningBlockCount !== 1) {
-                    const map = maps[mapIndex];
-                    if (map instanceof MapComponent) {
-                        mapListsByPieceIndex[sectionBeginningBlockCount - 1].push(map);
-                    }
-                }
-                mapIndex++;
-            } else {
-                sectionFinalBlockCount = HowManyBlocks;
-            }
-            for (let blockCount = sectionBeginningBlockCount; blockCount <= sectionFinalBlockCount; blockCount++) {
-                if (!(mapListsByPieceIndex[blockCount] instanceof Array)) {
-                    mapListsByPieceIndex[blockCount] = new Array<MapComponent>();
-                }
-                let map = maps[mapIndex++];
-                if (map instanceof MapComponent) {
-                    mapListsByPieceIndex[blockCount].push(map);
-                }
-                map = maps[mapIndex++];
-                if (map instanceof MapComponent) {
-                    mapListsByPieceIndex[blockCount].push(map);
-                }
-            }
-            if (sectionFinalBlockCount === HowManyBlocks) {
-                break;
-            }
-        }
-        --blockCount;
-        if (blockCount < HowManyBlocks) {
-            HowManyBlocks = blockCount;
-        }
-        if (HowManyDemoBlocks === 0) {
-            HowManyDemoBlocks = HowManyBlocks;
-        }
-        if (blockCount === HowManyBlocks && mapIndex + 1 === maps.length) {
-            const map = maps[mapIndex++];
-            if (map instanceof MapComponent) {
-                mapListsByPieceIndex[blockCount].push(map);
-            }
-        }
-
-        for (const key in mapListsByPieceIndex) {
-            const maps = mapListsByPieceIndex[key];
-            maps.forEach((map: MapComponent) => {
-                const saveButton = map.querySelector(':scope button.save_btn');
-                saveButton.addEventListener('click', syncMaps);
-                saveButton.textContent = `Save changes for block ${pieceIndex} and up`;
-                const editButton = map.querySelector(':scope a.open-map-edit');
-                editButton.textContent = `Edit map for block ${pieceIndex}`;
-            })
-            pieceIndex++;
-        }
-    }*/
 
     // newMap creates a new Map component
     async function newMap(mapType) {
@@ -922,23 +748,6 @@ function setupTrainingMaker() {'use strict';
             });
             for (const {x, y} of filledMino.positions()) {
                 field.set(x, y, fumen.parsePiece(filledMino.type));
-            }
-        }
-    }
-
-    function removeMinoFromField(fumen, page) {
-        const field = page['_field'].field;
-        const operation = page.operation;
-        if (operation instanceof Object) {
-            const filledMino = page.mino();
-            field.fill({
-                type: fumen.parsePiece(operation.type),
-                rotation: fumen.parseRotation(operation.rotation),
-                x: operation.x,
-                y: operation.y
-            });
-            for (const {x, y} of filledMino.positions()) {
-                field.set(x, y, fumen.Piece.Empty);
             }
         }
     }
