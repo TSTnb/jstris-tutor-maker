@@ -2,7 +2,7 @@
 // @name         Jstris Tutor Maker
 // @license      BSD-2-Clause
 // @namespace    Jstris Tutor Maker
-// @version      0.3.1
+// @version      0.3.2
 // @description  Helps you make a Jstris usermode for placing a queue of pieces in the right spots
 // @author       TSTman
 // @match        https://jstris.jezevec10.com/usermodes/create*
@@ -379,10 +379,7 @@ function setupTrainingMaker() {
             }
         }
         if (!IsChallengeMode && blockCount <= HowManyBlocks && blockCount <= howManyDemoBlocks) {
-            const queueTriggerID = `before_demo_${blockCount}`;
             await newQueueChange(demoQueues[blockCount], demoHoldPieces[blockCount], true, false, true);
-            await newRelativeTrigger(RelativeTriggerTypeBlocks, 0, queueTriggerID)
-            await newTrigger(TriggerTypeExternalConditional, queueTriggerID);
         }
     }
 
