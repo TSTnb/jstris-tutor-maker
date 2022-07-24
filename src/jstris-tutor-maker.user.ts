@@ -447,8 +447,10 @@ function setupTrainingMaker() {
     }
 
     const sectionID: string = 'blocks-per-section';
+    const fumenInputID: string = 'fumen-input';
     const tutorModeID: string = 'usermode-type-tutor';
     const challengeModeID: string = 'usermode-type-challenge';
+    const timePerPieceID: string = 'time-per-piece';
 
     async function fumenSection() {
         const fumenSection: HTMLDivElement = newDiv(null, 'fumen-section', 'col-sm-10');
@@ -475,8 +477,6 @@ function setupTrainingMaker() {
         const fumenContainer: HTMLDivElement = newDiv(newDiv(newDiv(inputsContainer, 'form-group'), 'row'), 'col-sm-12');
         const fumenInput: HTMLInputElement = document.createElement('input');
         const inputAttributes = {
-            id: 'fumen-input',
-            placeholder: 'Enter fumen here',
             class: 'form-control',
             type: 'text',
             autocomplete: 'off',
@@ -487,6 +487,8 @@ function setupTrainingMaker() {
         for (const attribute in inputAttributes) {
             fumenInput.setAttribute(attribute, inputAttributes[attribute]);
         }
+        fumenInput.id = fumenInputID;
+        fumenInput.placeholder = 'Enter fumen here';
         fumenContainer.appendChild(fumenInput);
 
         const settingsContainer: HTMLDivElement = newDiv(newDiv(inputsContainer, 'form-group'), 'row');
@@ -542,6 +544,21 @@ function setupTrainingMaker() {
         challengeModeLabel.classList.add('form-check-label');
         challengeModeLabel.htmlFor = challengeModeID;
         challengeModeContainer.appendChild(challengeModeLabel);
+
+        const timePerPieceContainer: HTMLDivElement = newDiv(newDiv(inputsContainer, 'form-group'), 'row');
+        const timePerPieceLabel: HTMLLabelElement = document.createElement('label');
+        timePerPieceLabel.classList.add('col-sm-3', 'control-label');
+        timePerPieceLabel.textContent = 'Demo time per piece';
+        timePerPieceLabel.htmlFor = timePerPieceID;
+        timePerPieceContainer.appendChild(timePerPieceLabel);
+        const timePerPieceInput: HTMLInputElement = document.createElement('input');
+        for (const attribute in inputAttributes) {
+            timePerPieceInput.setAttribute(attribute, inputAttributes[attribute]);
+        }
+        timePerPieceInput.placeholder = '(seconds)';
+        timePerPieceInput.value = PauseHowLongBetweenPieces.toString();
+        timePerPieceInput.id = timePerPieceID;
+        newDiv(timePerPieceContainer, 'col-sm-3').appendChild(timePerPieceInput);
 
         fumenSection.appendChild(mainRow);
         const saveButtonDiv: HTMLDivElement = saveAllButton().parentNode as HTMLDivElement;
@@ -732,7 +749,7 @@ function setupTrainingMaker() {
         mapFumenPiecesToJstrisPieces(fumen);
 
         let index = 1;
-        let inputElement: HTMLInputElement = document.querySelector('#fumen-input');
+        let inputElement: HTMLInputElement = document.querySelector(`#${fumenInputID}`);
         const pages: Pages = fumen.decode(inputElement.value);
         BlockQueue = blockQueueFromPages(fumen, pages);
         totalLinesCleared = Array(pages.length).fill(0);
@@ -769,6 +786,7 @@ function setupTrainingMaker() {
         }
 
         IsChallengeMode = (document.querySelector(`#${challengeModeID}`) as HTMLInputElement).checked === true;
+        PauseHowLongBetweenPieces = parseFloat((document.querySelector(`#${timePerPieceID}`) as HTMLInputElement).value);
 
         await loadComponents(false);
         for (const page of pages) {
