@@ -117,6 +117,13 @@ function setupTrainingMaker() {'use strict';
         }
     }
 
+    class Run extends Component {
+        constructor(triggerID) {
+            super('run');
+            this.opts['id'] = triggerID;
+        }
+    }
+
     class Trigger extends Component {
         constructor(triggerType, triggerArg) {
             super('trig');
@@ -137,6 +144,7 @@ function setupTrainingMaker() {'use strict';
     const TriggerTypeExternalConditional = 7;
     const TriggerTypeNever = 9;
     const TriggerTypeOnGameStart = 10;
+    const TriggerIDTwoLinePC = '2_Line_PC';
 
     async function saveTextInput(element, value) {
         element.value = value;
@@ -241,6 +249,10 @@ function setupTrainingMaker() {'use strict';
         await addComponent(new Ruleset(rulesetType));
     }
 
+    async function newRun(triggerID) {
+        await addComponent(new Run(triggerID));
+    }
+
     const ConditionTypePCs = 7;
     const ConditionTypeHolds = 14;
     const ConditionTypeLines = 17;
@@ -301,8 +313,7 @@ function setupTrainingMaker() {'use strict';
             nextHoldPiece = QueueHoldPieceNone;
         }
         await newQueueChange(QueueIPiece + nextQueue, nextHoldPiece, true, false);
-        await newMap(MapTypeAddToCurrentBoardOnTop);
-        await newRuleset(RulesetTypeFastDropLock);
+        await newRun(TriggerIDTwoLinePC);
         const judgeTriggerID = `judge_stage${blockCount}`;
         await newRelativeTrigger(RelativeTriggerTypeLines, 1, judgeTriggerID);
         await newTrigger(TriggerTypeExternalConditional, judgeTriggerID);
@@ -548,6 +559,9 @@ function setupTrainingMaker() {'use strict';
             await newTrigger(TriggerTypeNever);
             await newMap(MapTypeReplaceBoard, thumbnailContent);
         }
+        await newTrigger(TriggerTypeExternalConditional, TriggerIDTwoLinePC);
+        await newMap(MapTypeAddToCurrentBoardOnTop);
+        await newRuleset(RulesetTypeFastDropLock);
         mapListsByPieceIndex = {};
         hasHold = BlockQueue.search(QueueHoldPiece) > -1;
         setDefaultRuleset();

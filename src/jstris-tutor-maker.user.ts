@@ -128,6 +128,13 @@ function setupTrainingMaker() {
         }
     }
 
+    class Run extends Component {
+        constructor(triggerID: string) {
+            super('run');
+            this.opts['id'] = triggerID;
+        }
+    }
+
     class Trigger extends Component {
         constructor(triggerType: number, triggerArg: string | null) {
             super('trig');
@@ -148,6 +155,7 @@ function setupTrainingMaker() {
     const TriggerTypeExternalConditional = 7;
     const TriggerTypeNever = 9;
     const TriggerTypeOnGameStart = 10;
+    const TriggerIDTwoLinePC = '2_Line_PC';
 
     async function saveTextInput(element, value) {
         element.value = value;
@@ -254,6 +262,10 @@ function setupTrainingMaker() {
         await addComponent(new Ruleset(rulesetType));
     }
 
+    async function newRun(triggerID: string) {
+        await addComponent(new Run(triggerID));
+    }
+
     const ConditionTypePCs = 7;
     const ConditionTypeHolds = 14;
     const ConditionTypeLines = 17;
@@ -314,8 +326,7 @@ function setupTrainingMaker() {
             nextHoldPiece = QueueHoldPieceNone;
         }
         await newQueueChange(QueueIPiece + nextQueue, nextHoldPiece, true, false);
-        await newMap(MapTypeAddToCurrentBoardOnTop);
-        await newRuleset(RulesetTypeFastDropLock);
+        await newRun(TriggerIDTwoLinePC);
         const judgeTriggerID = `judge_stage${blockCount}`;
         await newRelativeTrigger(RelativeTriggerTypeLines, 1, judgeTriggerID)
         await newTrigger(TriggerTypeExternalConditional, judgeTriggerID);
@@ -572,6 +583,10 @@ function setupTrainingMaker() {
             await newTrigger(TriggerTypeNever);
             await newMap(MapTypeReplaceBoard, thumbnailContent);
         }
+
+        await newTrigger(TriggerTypeExternalConditional, TriggerIDTwoLinePC)
+        await newMap(MapTypeAddToCurrentBoardOnTop);
+        await newRuleset(RulesetTypeFastDropLock);
 
         mapListsByPieceIndex = {};
         hasHold = BlockQueue.search(QueueHoldPiece) > -1;
