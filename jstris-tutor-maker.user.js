@@ -13,8 +13,8 @@
 function setupTrainingMaker() {'use strict';
     // Uncomment an ExampleFumen below (only 1 at a time) to see how it works with Jstris Tutor Maker.
 
-    // 3 bags of fesh sprint
-    let ExampleFumen = 'v115@vhU2OY9BFLDmClcJSAVDEHBEooRBPoAVBKNUFDU+Dx?CaeHgCzuPFDMXltCTXNPC0XEWCadNPCvuLuCMHmPCpyTxCa?eHgCsvTxCJnzPCJ3TWC6ujWCpvbgCU3jFDK+DxCzyKxCKez?PCMdFgC6OOMCvintC6P9VCa3TxCsAAAAzkBifB0sB9tBXjB?plBqrBFiBJmB+tBsrBnsBTpBOrBNqB6qBTpBxrBHtBMtB';
+    // Thumbnail + 3 bags of fesh sprint
+    let ExampleFumen = 'v115@ZfA8Bek0BeB8j0Aeh0AeB8g0A8k0AeB8g0B8j0AeA8?Bek0lfAglZfAABekHBeBAjHAehHAeBAgHAAkHAeBAgHBAjH?AeAABekHlf2uQ9BFLDmClcJSAVDEHBEooRBPoAVBKNUFDU+?DxCaeHgCzuPFDMXltCTXNPC0XEWCadNPCvuLuCMHmPCpyTx?CaeHgCsvTxCJnzPCJ3TWC6ujWCpvbgCU3jFDK+DxCzyKxCK?ezPCMdFgC6OOMCvintC6P9VCa3TxCsAAAAvhTzkBifB0sB9?tBXjBplBqrBFiBJmB+tBsrBnsBTpBOrBNqB6qBTpBxrBHtB?MtB';
 
     // Test single line clears:
     //let ExampleFumen = 'v115@vhJSSYtAFLDmClcJSAVDEHBEooRBMoAVBU3LMC6f/w?CpHLWCTO1LCJO1LCJO1LCpAAAA1wBTpB3qBxpBUsBWtBOmB?FqBctB';
@@ -135,6 +135,7 @@ function setupTrainingMaker() {'use strict';
     const TriggerTypeBeforeGame = 0;
     const TriggerTypeOnSpecificBlockNumber = 3;
     const TriggerTypeExternalConditional = 7;
+    const TriggerTypeNever = 9;
     const TriggerTypeOnGameStart = 10;
 
     async function saveTextInput(element, value) {
@@ -156,7 +157,7 @@ function setupTrainingMaker() {'use strict';
     }
 
     // newTrigger creates a new Trigger component
-    async function newTrigger(triggerType, triggerArg) {
+    async function newTrigger(triggerType, triggerArg = null) {
         await addComponent(new Trigger(triggerType, triggerArg));
     }
 
@@ -221,10 +222,12 @@ function setupTrainingMaker() {'use strict';
     }
 
     // newMap creates a new Map component
-    async function newMap(mapType) {
+    async function newMap(mapType, content = null) {
         const map = new MapComponent(mapType);
         if (mapType === MapTypeAddToCurrentBoardOnTop) {
             map.updateContent(MapDataLineClear);
+        } else if (typeof content === 'string') {
+            await updateMapContent(map, content);
         }
         await addComponent(map);
         return map;
@@ -585,7 +588,11 @@ function setupTrainingMaker() {'use strict';
     let demoQueues;
     let demoHoldPieces;
 
-    async function loadComponents(shouldResetStatus = true) {
+    async function loadComponents(shouldResetStatus = true, thumbnailContent = undefined) {
+        if (typeof thumbnailContent === 'string') {
+            await newTrigger(TriggerTypeNever);
+            await newMap(MapTypeReplaceBoard, thumbnailContent);
+        }
         mapListsByPieceIndex = {};
         hasHold = BlockQueue.search(QueueHoldPiece) > -1;
         setDefaultRuleset();
@@ -669,8 +676,9 @@ function setupTrainingMaker() {'use strict';
         let blockQueue = '';
         let quiz;
         let usedNextPiece;
+        let pieceIndex = 1;
         for (const page of pages) {
-            if (HowManyBlocks > 0 && page.index >= HowManyBlocks) {
+            if (HowManyBlocks > 0 && pieceIndex > HowManyBlocks) {
                 break;
             }
             usedNextPiece = false;
@@ -693,6 +701,7 @@ function setupTrainingMaker() {'use strict';
                 }
             }
             blockQueue += quizPiece;
+            pieceIndex++;
         }
         if (quiz instanceof fumen.Quiz) {
             let nextPieces = quiz.getNextPieces().map(fumen.parsePieceName).join('');
@@ -707,6 +716,7 @@ function setupTrainingMaker() {'use strict';
 
     // howManyDemoBlocks is a computed field, you don't set it directly
     let howManyDemoBlocks;
+    let hasThumbnail = false;
 
     async function loadFumenToMaps() {
         const fumenButton = fumenSaveButton();
@@ -715,27 +725,32 @@ function setupTrainingMaker() {'use strict';
         fumenButton.textContent = 'Fumen loading...';
         let fumen = new Fumen();
         mapFumenPiecesToJstrisPieces(fumen);
-        let index = 1;
         let inputElement = document.querySelector(`#${fumenInputID}`);
         const pages = fumen.decode(inputElement.value);
+        let thumbnailContent;
+        if (pages[0].flags.quiz === false && !(pages[0].operation instanceof fumen.Mino)) {
+            hasThumbnail = true;
+            thumbnailContent = fumenToMapData(fumen, pages.shift()['_field'].field['pieces']);
+        }
         BlockQueue = blockQueueFromPages(fumen, pages);
         totalLinesCleared = Array(pages.length).fill(0);
         actualPCCounts = Array(pages.length).fill(0);
         fumenWithFullLines = {};
-        componentList = [];
         let cumulativeLinesCleared = 0;
+        let pieceIndex = 1;
         for (const page of pages) {
-            if (HowManyBlocks > 0 && page.index >= HowManyBlocks) {
+            if (HowManyBlocks > 0 && pieceIndex > HowManyBlocks) {
                 break;
             }
             addMinoToField(fumen, page);
             const linesBeforeClearing = page['_field'].field.pieces.slice();
-            const clearedThisPage = countLineClears(fumen, page);
+            const clearedThisPage = countLineClears(fumen, page, pieceIndex);
             if (clearedThisPage > 0) {
-                fumenWithFullLines[page.index + 1] = fumenToMapData(fumen, linesBeforeClearing);
+                fumenWithFullLines[pieceIndex] = fumenToMapData(fumen, linesBeforeClearing);
             }
             cumulativeLinesCleared += clearedThisPage;
-            totalLinesCleared[page.index + 1] = cumulativeLinesCleared;
+            totalLinesCleared[pieceIndex] = cumulativeLinesCleared;
+            pieceIndex++;
         }
         if (BlockQueue.length > 0 && HowManyBlocks === 0) {
             HowManyBlocks = pages.length;
@@ -752,12 +767,15 @@ function setupTrainingMaker() {'use strict';
         }
         IsChallengeMode = document.querySelector(`#${challengeModeID}`).checked === true;
         PauseHowLongBetweenPieces = parseFloat(document.querySelector(`#${timePerPieceID}`).value);
-        await loadComponents(false);
+        componentList = [];
+        await loadComponents(false, thumbnailContent);
+        pieceIndex = 1;
         for (const page of pages) {
-            if (HowManyBlocks > 0 && page.index >= HowManyBlocks) {
+            if (HowManyBlocks > 0 && pieceIndex > HowManyBlocks) {
                 break;
             }
-            await updateSectionMapContent(mapListsByPieceIndex[index++], fumenToMapData(fumen, page['_field'].field['pieces']));
+            await updateSectionMapContent(mapListsByPieceIndex[pieceIndex], fumenToMapData(fumen, page['_field'].field['pieces']));
+            pieceIndex++;
         }
         await loadUsermodeForm();
         fumenButton.classList.add('btn-success');
@@ -767,8 +785,6 @@ function setupTrainingMaker() {'use strict';
     }
 
     async function loadUsermodeForm() {
-        window['lmao'] = JSON.parse(JSON.stringify(componentList));
-        //console.log(window['lmao']);
         // @ts-ignore
         const fb = new Formbuilder({selector: '.components-main', bootstrapData: componentList});
         fb.on('save', function (payload) {
@@ -779,7 +795,6 @@ function setupTrainingMaker() {'use strict';
         });
         // @ts-ignore
         $("#pubSection").hide();
-        ''.toString();
         await sleep();
     }
 
@@ -808,7 +823,7 @@ function setupTrainingMaker() {'use strict';
 
     let actualPCCounts;
 
-    function countLineClears(fumen, page) {
+    function countLineClears(fumen, page, pieceIndex) {
         let linesCleared = 0;
         const pieces = page['_field'].field.pieces;
         let finalRow = rowCount;
@@ -825,12 +840,12 @@ function setupTrainingMaker() {'use strict';
             pieces.push(...emptyRow);
             --finalRow;
         }
-        if (page.index > 0) {
-            actualPCCounts[page.index + 1] = actualPCCounts[page.index];
+        if (pieceIndex > 1) {
+            actualPCCounts[pieceIndex] = actualPCCounts[pieceIndex - 1];
         }
         const maxPiece = Math.max(...pieces.slice(0, (rowCount - 1) * columnCount));
         if (maxPiece === 0) {
-            actualPCCounts[page.index + 1]++;
+            actualPCCounts[pieceIndex]++;
         }
         return linesCleared;
     }

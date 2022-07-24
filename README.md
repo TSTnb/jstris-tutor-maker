@@ -9,7 +9,9 @@ Helps you make a Jstris usermode for placing a queue of pieces in the right spot
 
 <li>Go to <a href="https://jstris.jezevec10.com/usermodes/create">https://jstris.jezevec10.com/usermodes/create</a></li>
 
-<li>Paste the fumen code in the text box that says <i>Enter fumen here</i></li>
+<li>Paste the fumen code in the text box that says <i>Enter fumen here</i>
+    <ol><li>If you want your usermode to have a thumbnail, make it on the first frame of your fumen. Just make sure the quiz and mino are disabled on that thumbnail frame.</li></ol>
+</li>
 
 <li>Click <i>Load fumen</i></li>
 
