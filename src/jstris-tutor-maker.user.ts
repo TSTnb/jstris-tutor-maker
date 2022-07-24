@@ -280,7 +280,6 @@ function setupTrainingMaker() {
         saveButton.classList.remove(ClassButtonSuccess);
         saveButton.classList.add(ClassButtonDanger);
         saveButton.textContent = statusText;
-        await sleep();
     }
 
     async function resetStatus() {
@@ -391,50 +390,6 @@ function setupTrainingMaker() {
     }
 
     let totalSections;
-
-    function totalComponents(howManyBlocks: number, howManyBlocksPerSection: number, howManyDemoBlocks: number, blockQueue: string, beginningAndEndComponents: boolean, totalSections: number): number {
-        if (howManyDemoBlocks < howManyBlocks) {
-            const demoBlockQueue = blockQueue.match(new RegExp(`([ZSJLOIT]H?){${howManyDemoBlocks}}`))[0];
-            const totalDemoSections = howManyBlocksPerSection > 0 ? Math.ceil(howManyDemoBlocks / howManyBlocksPerSection) : 1;
-            return totalComponents(howManyDemoBlocks, howManyBlocksPerSection, howManyDemoBlocks, blockQueue, beginningAndEndComponents, totalDemoSections) +
-                totalComponents(howManyBlocks - howManyDemoBlocks, 0, howManyBlocks - howManyDemoBlocks, blockQueue.slice(demoBlockQueue.length), false, totalSections - totalDemoSections);
-        }
-        // newTrigger(TriggerTypeBeforeGame), newQueueChange(queue), newTrigger(TriggerTypeOnGameStart), newQueueChange(queue)
-        let initialComponents = 4;
-        if (!hasHold) {
-            // newRuleset(RulesetTypeDefault)
-            initialComponents++;
-        }
-        // removeComponent(latestComponent()), removeComponent(latestComponent())
-        let componentsRemovedAtTheEnd = 2;
-        if (!beginningAndEndComponents) {
-            initialComponents = componentsRemovedAtTheEnd = 0;
-        }
-        // newRelativeTrigger(RelativeTriggerTypeTime), newTrigger(TriggerTypeExternalConditional), newMap(), newQueueChange()
-        const componentsPerDemoCycle = howManyBlocksPerSection > 0 ? 4 : 0;
-        // newTrigger(TriggerTypeOnSpecificBlockNumber), newMap(MapTypeSubtractFromCurrentBoard),
-        // newQueueChange(QueueIPiece), newMap(MapTypeAddToCurrentBoardOnTop), newRuleset(RulesetTypeFastDropLock),
-        // newRelativeTrigger(RelativeTriggerTypeLines), newTrigger(TriggerTypeExternalConditional), newCondition(ConditionTypePCs),
-        // newCondition(ConditionTypeLines), newMap(MapTypeReplaceBoard), newRuleset(RulesetTypeDefault)
-        const componentsPerCycle = 11;
-        // newRelativeTrigger(RelativeTriggerTypeTime) + newTrigger(TriggerTypeExternalConditional), newMap(), newQueueChange()
-        const componentsPerDemoCycleSection = howManyBlocksPerSection > 0 ? (1 + 3) : 0;
-        // newQueueChange(queue), newRelativeTrigger(RelativeTriggerTypeBlocks), newTrigger(TriggerTypeExternalConditional)
-        const componentsPerCycleSection = howManyBlocksPerSection > 0 ? 3 : 0;
-        // newRelativeTrigger(RelativeTriggerTypeTime), newTrigger(TriggerTypeExternalConditional), newQueueChange()
-        const componentsPerHold = howManyBlocksPerSection > 0 ? 3 : 0;
-        // newRelativeTrigger(RelativeTriggerTypeTime), newTrigger(TriggerTypeExternalConditional), newMap()
-        const componentsPerLineClear = howManyBlocksPerSection > 0 ? 3 : 0;
-        // Gets number of holds in within howManyBlocks blocks
-        const totalHolds = (blockQueue.match(new RegExp(`([ZSJLOIT]H?){${howManyBlocks}}`))[0].match(/H(?!$)/g) || []).length
-        const totalLineClears = Object.keys(fumenWithFullLines).filter(pieceIndex => parseInt(pieceIndex) <= howManyBlocks).length;
-        return initialComponents +
-            (componentsPerDemoCycle + componentsPerCycle) * howManyBlocks +
-            (componentsPerDemoCycleSection + componentsPerCycleSection) * totalSections - componentsPerCycleSection +
-            componentsPerHold * totalHolds +
-            componentsPerLineClear * totalLineClears -
-            componentsRemovedAtTheEnd;
-    }
 
     function fumenSaveButton(): HTMLButtonElement {
         return document.querySelector('div.fumen-section button.load-fumen') as HTMLButtonElement;
@@ -629,10 +584,6 @@ function setupTrainingMaker() {
         if (HowManyBlocks > 0) {
             fumenButton.classList.add('disabled')
             fumenButton.setAttribute('disabled', '');
-            const expectedComponentCount = totalComponents(HowManyBlocks, HowManyBlocksPerSection, howManyDemoBlocks, BlockQueue, true, totalSections);
-            await updateStatus(`Generating components...`);
-            // Periodic updates so you know if it's still busy generating stuff
-
             let firstSection: boolean = true;
 
             queues = [];
@@ -682,7 +633,7 @@ function setupTrainingMaker() {
     }
 
     (async function () {
-        await loadComponents();
+        await fumenSection();
     })();
 
     const JstrisPiece: Object = {
@@ -750,9 +701,19 @@ function setupTrainingMaker() {
     // howManyDemoBlocks is a computed field, you don't set it directly
     let howManyDemoBlocks: number;
 
+    let progressInterval: number;
+
     let hasThumbnail: boolean = false;
 
     async function loadFumenToMaps() {
+        componentList = [];
+        const generateProgress = () => updateStatus(`Generated ${componentList.length} components`);
+        const loadProgress = () => {console.log(document.querySelectorAll('span.cid-disp').length, 'so far'); updateStatus(`Loaded ${document.querySelectorAll('span.cid-disp').length}/${componentList.length} components`)};
+        // Periodic updates so you know if it's still busy generating stuff
+        progressInterval = window.setInterval(generateProgress, 1000);
+        await generateProgress();
+        await sleep();
+
         const fumenButton: HTMLButtonElement = fumenSaveButton();
         fumenButton.classList.add('btn-warning');
         fumenButton.classList.remove('btn-success');
@@ -805,7 +766,6 @@ function setupTrainingMaker() {
         IsChallengeMode = (document.querySelector(`#${challengeModeID}`) as HTMLInputElement).checked === true;
         PauseHowLongBetweenPieces = parseFloat((document.querySelector(`#${timePerPieceID}`) as HTMLInputElement).value);
 
-        componentList = [];
         await loadComponents(false, thumbnailContent);
         pieceIndex = 1;
         for (const page of pages) {
@@ -815,13 +775,27 @@ function setupTrainingMaker() {
             await updateSectionMapContent(mapListsByPieceIndex[pieceIndex], fumenToMapData(fumen, page['_field'].field['pieces']));
             pieceIndex++;
         }
-        await loadUsermodeForm();
+        clearInterval(progressInterval);
+        loadProgress();
+        // Progress for Backbone.js render components in the DOM. Backbone.js locks up the page until it's done, but if they ever don't,
+        // this progress interval will work.
+        progressInterval = window.setInterval(loadProgress, 1000);
+        await sleep();
+        // Load in a separate thread in an attempt to keep the page from locking up while it's loading
+        setTimeout(loadUsermodeForm, 0);
+    }
+
+    async function loadingDone() {
+        const fumenButton = fumenSaveButton();
+
+        clearInterval(progressInterval);
 
         fumenButton.classList.add('btn-success');
         fumenButton.classList.remove('btn-warning');
         fumenButton.textContent = 'Fumen loaded!';
         await resetStatus();
     }
+
 
     async function loadUsermodeForm() {
         // @ts-ignore
@@ -836,6 +810,7 @@ function setupTrainingMaker() {
         // @ts-ignore
         $("#pubSection").hide();
         await sleep();
+        await loadingDone();
     }
 
     let rowCount = 20;
