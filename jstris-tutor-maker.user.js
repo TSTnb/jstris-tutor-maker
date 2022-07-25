@@ -568,8 +568,6 @@ function setupTrainingMaker() {'use strict';
         }
         setTotalSections();
         if (HowManyBlocks > 0) {
-            fumenButton.classList.add('disabled');
-            fumenButton.setAttribute('disabled', '');
             let firstSection = true;
             queues = [];
             holdPieces = [];
@@ -694,6 +692,8 @@ function setupTrainingMaker() {'use strict';
         fumenButton.classList.add('btn-warning');
         fumenButton.classList.remove('btn-success');
         fumenButton.textContent = 'Fumen loading...';
+        fumenButton.classList.add('disabled');
+        fumenButton.setAttribute('disabled', '');
         let fumen = new Fumen();
         mapFumenPiecesToJstrisPieces(fumen);
         let inputElement = document.querySelector(`#${fumenInputID}`);
@@ -763,6 +763,8 @@ function setupTrainingMaker() {'use strict';
         fumenButton.classList.add('btn-success');
         fumenButton.classList.remove('btn-warning');
         fumenButton.textContent = 'Fumen loaded!';
+        fumenButton.classList.remove('disabled');
+        fumenButton.removeAttribute('disabled');
         await resetStatus();
     }
 
