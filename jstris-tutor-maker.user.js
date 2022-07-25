@@ -314,7 +314,7 @@ function setupTrainingMaker() {'use strict';
         }
         await newQueueChange(QueueIPiece + nextQueue, nextHoldPiece, true, false);
         await newRun(TriggerIDTwoLinePC);
-        const judgeTriggerID = `judge_stage${blockCount}`;
+        const judgeTriggerID = `judge_stage${sectionCount}`;
         await newRelativeTrigger(RelativeTriggerTypeLines, 1, judgeTriggerID);
         await newTrigger(TriggerTypeExternalConditional, judgeTriggerID);
         await newCondition(ConditionTypePCs, `=${sectionCount + actualPCCounts[blockCount]}`, false, ConditionResultTypeGameOver);
