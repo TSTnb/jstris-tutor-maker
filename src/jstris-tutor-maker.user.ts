@@ -155,7 +155,8 @@ function setupTrainingMaker() {
     const TriggerTypeExternalConditional = 7;
     const TriggerTypeNever = 9;
     const TriggerTypeOnGameStart = 10;
-    const TriggerIDTwoLinePC = '2_Line_PC';
+    const TriggerIDTwoLinePC = '2_line_PC';
+    const TriggerIDDefaultRuleset = 'default_ruleset';
 
     async function saveTextInput(element, value) {
         element.value = value;
@@ -326,14 +327,15 @@ function setupTrainingMaker() {
             nextHoldPiece = QueueHoldPieceNone;
         }
         await newQueueChange(QueueIPiece + nextQueue, nextHoldPiece, true, false);
-        await newRun(TriggerIDTwoLinePC);
         const judgeTriggerID = `judge_stage${sectionCount}`;
-        await newRelativeTrigger(RelativeTriggerTypeLines, 1, judgeTriggerID)
+        if (blockCount === HowManyBlocks && blockCount % HowManyBlocksPerSection !== 0) {
+            await newRun(TriggerIDTwoLinePC);
+        }
+        await newRelativeTrigger(RelativeTriggerTypeLines, 2, judgeTriggerID)
         await newTrigger(TriggerTypeExternalConditional, judgeTriggerID);
         await newCondition(ConditionTypePCs, `=${sectionCount + actualPCCounts[blockCount]}`, false, ConditionResultTypeGameOver);
         await newCondition(ConditionTypeLines, `=${totalLinesCleared[blockCount] + 2 * sectionCount}`, false, ConditionResultTypeGameOver);
         mapListForBlock.push(await newMap(MapTypeReplaceBoard));
-        await newRuleset(RulesetTypeDefault);
     }
 
     async function makeDemoCycles(blockCount: number, totalBlocks: number, queue: string, finalTriggerID: string, mapListsBySection: Object): Promise<void> {
@@ -385,12 +387,10 @@ function setupTrainingMaker() {
 
     async function initUserMode(queue: string) {
         await newTrigger(TriggerTypeBeforeGame, null);
-        if (!hasHold) {
-            await newRuleset(RulesetTypeDefault);
-        }
         await newQueueChange(queue, QueueHoldPieceNone, true, false);
         await newTrigger(TriggerTypeOnGameStart, null);
         await newQueueChange(queue, QueueHoldPieceNone, true, false);
+        await newRun(TriggerIDDefaultRuleset);
     }
 
     function setTotalSections(): void {
@@ -575,15 +575,11 @@ function setupTrainingMaker() {
     let demoQueues: string[];
     let demoHoldPieces: string[];
 
-    async function loadComponents(shouldResetStatus: boolean = true, thumbnailContent: string = undefined) {
+    async function loadComponents(thumbnailContent: string = undefined) {
         if (typeof thumbnailContent === 'string') {
             await newTrigger(TriggerTypeNever);
             await newMap(MapTypeReplaceBoard, thumbnailContent);
         }
-
-        await newTrigger(TriggerTypeExternalConditional, TriggerIDTwoLinePC)
-        await newMap(MapTypeAddToCurrentBoardOnTop);
-        await newRuleset(RulesetTypeFastDropLock);
 
         mapListsByPieceIndex = {};
         hasHold = BlockQueue.search(QueueHoldPiece) > -1;
@@ -627,14 +623,17 @@ function setupTrainingMaker() {
                 }
             }
 
-            //const editButton: HTMLAnchorElement = mapListsByPieceIndex[newMapIndex][0].querySelector(':scope a.open-map-edit');
-            //editButton.click();
+            // conditional trigger 2_line_PC, which immediately clears 2 lines
+            await newTrigger(TriggerTypeExternalConditional, TriggerIDTwoLinePC)
+            await newMap(MapTypeAddToCurrentBoardOnTop);
+            await newRuleset(RulesetTypeFastDropLock);
+            await newRelativeTrigger(RelativeTriggerTypeLines, 2, TriggerIDDefaultRuleset);
 
-            if (shouldResetStatus) {
-                await resetStatus();
-            }
-            fumenButton.classList.remove('disabled')
-            fumenButton.removeAttribute('disabled');
+            // conditional trigger default_ruleset, which reverts the ruleset, waits for
+            // 7 more blocks to be placed, then loops back to 2_line_PC
+            await newTrigger(TriggerTypeExternalConditional, TriggerIDDefaultRuleset);
+            await newRuleset(RulesetTypeDefault);
+            await newRelativeTrigger(RelativeTriggerTypeBlocks, 7, TriggerIDTwoLinePC);
         }
     }
 
@@ -774,7 +773,7 @@ function setupTrainingMaker() {
         IsChallengeMode = (document.querySelector(`#${challengeModeID}`) as HTMLInputElement).checked === true;
         PauseHowLongBetweenPieces = parseFloat((document.querySelector(`#${timePerPieceID}`) as HTMLInputElement).value);
 
-        await loadComponents(false, thumbnailContent);
+        await loadComponents(thumbnailContent);
         pieceIndex = 1;
         for (const page of pages) {
             if (HowManyBlocks > 0 && pieceIndex > HowManyBlocks) {
