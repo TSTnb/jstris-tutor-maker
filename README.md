@@ -1,8 +1,8 @@
-# Jstris Tutor Maker
+<h1>Jstris Tutor Maker</h1>
 
 Helps you make a Jstris usermode for placing a queue of pieces in the right spots.
 
-## How to use:
+<h2>How to use</h2>
 
 <ol>
 <li>Go to <a target="_blank" href="https://fumen.zui.jp/#english.js|frame.js">https://fumen.zui.jp/#english.js|frame.js</a>, make a fumen that you want your usermode's players to follow, and press <i>Output Data</i>. If you just want to see Jstris Tutor Maker in action, press the <i>Example fumen</i> button instead and skip to step 4.

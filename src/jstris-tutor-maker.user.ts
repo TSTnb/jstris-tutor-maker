@@ -2,7 +2,7 @@
 // @name         Jstris Tutor Maker
 // @license      BSD-2-Clause
 // @namespace    Jstris Tutor Maker
-// @version      0.3.2
+// @version      0.3.3
 // @description  Helps you make a Jstris usermode for placing a queue of pieces in the right spots
 // @author       TSTman
 // @match        https://jstris.jezevec10.com/usermodes/create*
@@ -17,7 +17,7 @@ import {PlayField} from "tetris-fumen/lib/inner_field";
 import {Operation as FieldOperation} from "tetris-fumen/lib/field";
 import {Quiz} from "tetris-fumen/lib/quiz";
 
-function setupTrainingMaker() {
+function setupTutorMaker() {
     'use strict';
 
     // Uncomment an ExampleFumen below (only 1 at a time) to see how it works with Jstris Tutor Maker.
@@ -2677,5 +2677,5 @@ function setupTrainingMaker() {
     }
 }
 
-//document.body.appendChild(document.createElement('script')).textContent = setupTrainingMaker.toString().match(/^function setupTrainingMaker\(\) \{((.|[\n\r])*)}$/)[1]
-setupTrainingMaker();
+//document.body.appendChild(document.createElement('script')).textContent = setupTutorMaker.toString().match(/^function setupTutorMaker\(\) \{((.|[\n\r])*)}$/)[1]
+setupTutorMaker();
