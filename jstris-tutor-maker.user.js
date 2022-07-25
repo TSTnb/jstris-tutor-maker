@@ -600,9 +600,6 @@ function setupTrainingMaker() {'use strict';
                     break;
                 }
             }
-            // Remove the relative trigger and trigger at the end, trigger ID block#_queue
-            componentList.pop();
-            componentList.pop();
             //const editButton: HTMLAnchorElement = mapListsByPieceIndex[newMapIndex][0].querySelector(':scope a.open-map-edit');
             //editButton.click();
             if (shouldResetStatus) {
