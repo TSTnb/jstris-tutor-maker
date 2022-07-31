@@ -69,10 +69,21 @@ function setupTutorMaker() {'use strict';
 
     Component.idCounter = 0;
 
+    class ComponentSwitch extends Component {
+        constructor(switchOption) {
+            super('switch');
+            this.opts['id'] = switchOption.triggerID;
+            this.opts['on'] = switchOption.on;
+        }
+    }
+
     class Condition extends Component {
-        constructor(conditionType, conditionValue, doIfTrue, conditionDo) {
+        constructor(conditionType, conditionValue, doIfTrue, conditionDo, conditionDo2 = null) {
             super('cond');
             this.opts['do'] = conditionDo;
+            if (typeof conditionDo2 === 'string') {
+                this.opts['do2'] = conditionDo2;
+            }
             this.opts['on'] = doIfTrue;
             this.opts['check'] = conditionType;
             this.opts['check2'] = conditionValue;
@@ -141,6 +152,7 @@ function setupTutorMaker() {'use strict';
 
     const TriggerTypeBeforeGame = 0;
     const TriggerTypeOnSpecificBlockNumber = 3;
+    const TriggerTypeOnEachBlock = 6;
     const TriggerTypeExternalConditional = 7;
     const TriggerTypeNever = 9;
     const TriggerTypeOnGameStart = 10;
@@ -254,14 +266,21 @@ function setupTutorMaker() {'use strict';
         await addComponent(new Run(triggerID));
     }
 
+    const ConditionTypeCustomExpression = 0;
     const ConditionTypePCs = 7;
     const ConditionTypeHolds = 14;
     const ConditionTypeLines = 17;
     const ConditionResultTypeGameOver = 1;
+    const ConditionResultTypeRunTriggerActions = 2;
+    const ConditionResultTypeSuccessfulGameEnd = 3;
+
+    async function newComponentSwitch(switchOption) {
+        await addComponent(new ComponentSwitch(switchOption));
+    }
 
     // newCondition creates a new Condition component.
-    async function newCondition(conditionType, conditionValue, doIfTrue, conditionDo) {
-        await addComponent(new Condition(conditionType, conditionValue, doIfTrue, conditionDo));
+    async function newCondition(conditionType, conditionValue, doIfTrue, conditionDo, conditionDo2 = null) {
+        await addComponent(new Condition(conditionType, conditionValue, doIfTrue, conditionDo, conditionDo2));
     }
 
     function saveAllButton() {
@@ -301,8 +320,15 @@ function setupTutorMaker() {'use strict';
     }
 
     // cycle goes through all the the steps to make sure the user placed a single piece correctly
-    async function cycle(sectionCount, blockCount, queues, holdPieces, mapListForBlock) {
-        await newTrigger(TriggerTypeOnSpecificBlockNumber, (blockCount + sectionCount - 1).toString());
+    async function cycle(sectionCount, playTriggerID, placedTriggerID, doneStageTriggerIDs, startingBlockCount, blockCount, queues, holdPieces, mapListForBlock) {
+        if (IsChallengeMode || blockCount > howManyDemoBlocks) {
+            await newTrigger(TriggerTypeOnSpecificBlockNumber, (blockCount + sectionCount - 1).toString());
+        } else {
+            const waitForBlocks = blockCount === HowManyBlocks && blockCount % HowManyBlocksPerSection !== 0 ?
+                blockCount % HowManyBlocksPerSection : HowManyBlocksPerSection;
+            await newRelativeTrigger(RelativeTriggerTypeBlocks, waitForBlocks, placedTriggerID);
+            await newTrigger(TriggerTypeExternalConditional, placedTriggerID);
+        }
         mapListForBlock.push(await newMap(MapTypeSubtractFromCurrentBoard));
         let nextQueue;
         let nextHoldPiece;
@@ -320,9 +346,34 @@ function setupTutorMaker() {'use strict';
         }
         await newRelativeTrigger(RelativeTriggerTypeLines, 2, judgeTriggerID);
         await newTrigger(TriggerTypeExternalConditional, judgeTriggerID);
-        await newCondition(ConditionTypePCs, `=${sectionCount + actualPCCounts[blockCount]}`, false, ConditionResultTypeGameOver);
-        await newCondition(ConditionTypeLines, `=${totalLinesCleared[blockCount] + 2 * sectionCount}`, false, ConditionResultTypeGameOver);
-        mapListForBlock.push(await newMap(MapTypeReplaceBoard));
+        const doneStageTriggerID = doneStageTriggerIDs[sectionCount];
+        if (!IsChallengeMode && blockCount <= howManyDemoBlocks) {
+            await newComponentSwitch({triggerID: doneStageTriggerIDs[sectionCount], on: true});
+        }
+        let conditionDo;
+        let conditionDo2 = null;
+        if (IsChallengeMode || blockCount > howManyDemoBlocks) {
+            conditionDo = ConditionResultTypeGameOver;
+        } else {
+            conditionDo = ConditionResultTypeRunTriggerActions;
+            conditionDo2 = doneStageTriggerIDs[sectionCount - 1];
+        }
+        const relativeLinesCleared = totalLinesCleared[blockCount] - totalLinesCleared[startingBlockCount - 1];
+        await newCondition(ConditionTypeCustomExpression, `${playTriggerID}.lines=${relativeLinesCleared + 2}`, false, conditionDo, conditionDo2);
+        const relativePCCount = actualPCCounts[blockCount] - actualPCCounts[startingBlockCount - 1];
+        await newCondition(ConditionTypeCustomExpression, `${playTriggerID}.PC=${relativePCCount + 1}`, false, conditionDo, conditionDo2);
+        if (!IsChallengeMode && blockCount <= howManyDemoBlocks) {
+            await newRun(doneStageTriggerID);
+            await newTrigger(TriggerTypeExternalConditional, doneStageTriggerID);
+            if (blockCount >= howManyDemoBlocks) {
+                await newCondition(ConditionTypeCustomExpression, 'blocks>=0', true, ConditionResultTypeSuccessfulGameEnd);
+            } else {
+                await newComponentSwitch({triggerID: doneStageTriggerIDs[sectionCount + 1], on: false});
+            }
+            mapListForBlock.push(await newMap(MapTypeReplaceBoard));
+        } else if (blockCount === HowManyBlocks) {
+            mapListForBlock.push(await newMap(MapTypeReplaceBoard));
+        }
     }
 
     async function makeDemoCycles(blockCount, totalBlocks, queue, finalTriggerID, mapListsBySection) {
@@ -357,26 +408,35 @@ function setupTutorMaker() {'use strict';
     }
 
     // 1 cycle per block in BlockQueue
-    async function makeCycles(sectionCount, blockCount, lastBlockInSection, mapListsBySection) {
+    async function makeCycles(sectionCount, playTriggerID, placedTriggerID, doneStageTriggerIDs, blockCount, lastBlockInSection, mapListsBySection) {
+        const startingBlockCount = blockCount;
         for (; blockCount <= lastBlockInSection; blockCount++) {
             if (!(mapListsBySection[blockCount] instanceof Array)) {
                 mapListsBySection[blockCount] = new Array();
             }
             const lastCycleInStage = blockCount === lastBlockInSection;
             if (lastCycleInStage) {
-                await cycle(sectionCount, blockCount, queues, holdPieces, mapListsBySection[blockCount]);
+                await cycle(sectionCount, playTriggerID, placedTriggerID, doneStageTriggerIDs, startingBlockCount, blockCount, queues, holdPieces, mapListsBySection[blockCount]);
             }
         }
-        if (!IsChallengeMode && blockCount <= HowManyBlocks && blockCount <= howManyDemoBlocks) {
+        if (!IsChallengeMode && blockCount <= howManyDemoBlocks) {
             await newQueueChange(demoQueues[blockCount], demoHoldPieces[blockCount], true, false, true);
         }
     }
 
-    async function initUserMode(queue) {
+    async function initUserMode(queue, doneStageTriggerIDs) {
         await newTrigger(TriggerTypeBeforeGame, null);
         await newQueueChange(queue, QueueHoldPieceNone, true, false);
         await newTrigger(TriggerTypeOnGameStart, null);
-        await newQueueChange(queue, QueueHoldPieceNone, true, false);
+        if (!IsChallengeMode && howManyDemoBlocks > 0) {
+            await newQueueChange(queue, QueueHoldPieceNone, true, false);
+        }
+        const initDoneTriggerID = doneStageTriggerIDs[0];
+        await newRun(initDoneTriggerID);
+        await newTrigger(TriggerTypeExternalConditional, initDoneTriggerID);
+        if (!IsChallengeMode && howManyDemoBlocks > 0) {
+            await newComponentSwitch({triggerID: doneStageTriggerIDs[1], on: false});
+        }
         await newRun(TriggerIDDefaultRuleset);
     }
 
@@ -559,9 +619,8 @@ function setupTutorMaker() {'use strict';
         mapListsByPieceIndex = {};
         hasHold = BlockQueue.search(QueueHoldPiece) > -1;
         setDefaultRuleset();
-        let fumenButton = fumenSaveButton();
-        if (!(fumenButton instanceof HTMLButtonElement)) {
-            fumenButton = await fumenSection();
+        if (!(fumenSaveButton() instanceof HTMLButtonElement)) {
+            await fumenSection();
         }
         setTotalSections();
         if (HowManyBlocks > 0) {
@@ -571,26 +630,38 @@ function setupTutorMaker() {'use strict';
             demoQueues = [];
             demoHoldPieces = [];
             buildQueues('');
-            await initUserMode(queues[1]);
+            const doneStageTriggerIDs = ['DonStag0'];
             for (let section = 1; section <= totalSections; section++) {
+                doneStageTriggerIDs[section] = `DonStag${section}`;
+            }
+            await initUserMode(queues[1], doneStageTriggerIDs);
+            if (!IsChallengeMode && howManyDemoBlocks > 0) {
+                mapListsByPieceIndex[0] = Array(await newMap(MapTypeReplaceBoard));
+            }
+            for (let section = 1; section <= totalSections; section++) {
+                const playTriggerID = `Stage${section}`;
+                const placedTriggerID = `placed_stage${section}`;
                 let sectionBeginningBlockCount = (section - 1) * HowManyBlocksPerSection + 1;
-                let playTriggerID = `play_stage${section}`;
                 let sectionFinalBlockCount = section * HowManyBlocksPerSection;
                 if (sectionFinalBlockCount > HowManyBlocks) {
                     sectionFinalBlockCount = HowManyBlocks;
                 }
-                if (!IsChallengeMode && sectionBeginningBlockCount < howManyDemoBlocks) {
+                if (!IsChallengeMode && sectionBeginningBlockCount <= howManyDemoBlocks) {
                     await makeDemoCycles(sectionBeginningBlockCount, sectionFinalBlockCount, demoQueues[sectionBeginningBlockCount], playTriggerID, mapListsByPieceIndex);
-                    await newTrigger(TriggerTypeExternalConditional, playTriggerID);
-                    let transitionMap = await newMap(MapTypeReplaceBoard);
-                    if (firstSection) {
-                        firstSection = false;
-                    } else {
-                        mapListsByPieceIndex[sectionBeginningBlockCount - 1].push(transitionMap);
-                    }
-                    await newQueueChange(queues[sectionBeginningBlockCount], holdPieces[sectionBeginningBlockCount], true, false);
+                } else {
+                    await newRun(playTriggerID);
                 }
-                await makeCycles(section, sectionBeginningBlockCount, sectionFinalBlockCount, mapListsByPieceIndex);
+                await newTrigger(TriggerTypeExternalConditional, playTriggerID);
+                let transitionMap = await newMap(MapTypeReplaceBoard);
+                if (firstSection || (!IsChallengeMode && sectionBeginningBlockCount <= howManyDemoBlocks)) {
+                    await newQueueChange(queues[sectionBeginningBlockCount], holdPieces[sectionBeginningBlockCount], true, false, (IsChallengeMode || sectionBeginningBlockCount > howManyDemoBlocks) && holdPieces[sectionBeginningBlockCount].length === 1);
+                }
+                if (firstSection) {
+                    firstSection = false;
+                } else {
+                    mapListsByPieceIndex[sectionBeginningBlockCount - 1].push(transitionMap);
+                }
+                await makeCycles(section, playTriggerID, placedTriggerID, doneStageTriggerIDs, sectionBeginningBlockCount, sectionFinalBlockCount, mapListsByPieceIndex);
                 if (sectionFinalBlockCount === HowManyBlocks) {
                     break;
                 }
@@ -681,7 +752,6 @@ function setupTutorMaker() {'use strict';
         componentList = [];
         const generateProgress = () => updateStatus(`Generated ${componentList.length} components`);
         const loadProgress = () => {
-            console.log(document.querySelectorAll('span.cid-disp').length, 'so far');
             updateStatus(`Loaded ${document.querySelectorAll('span.cid-disp').length}/${componentList.length} components`);
         };
         // Periodic updates so you know if it's still busy generating stuff
@@ -703,9 +773,10 @@ function setupTutorMaker() {'use strict';
             hasThumbnail = true;
             thumbnailContent = fumenToMapData(fumen, pages.shift()['_field'].field['pieces']);
         }
+        const fumenForFirstPage = fumenToMapData(fumen, pages[0]['_field'].field['pieces']);
         BlockQueue = blockQueueFromPages(fumen, pages);
-        totalLinesCleared = Array(pages.length).fill(0);
-        actualPCCounts = Array(pages.length).fill(0);
+        totalLinesCleared = Array(pages.length + 1).fill(0);
+        actualPCCounts = Array(pages.length + 1).fill(0);
         fumenWithFullLines = {};
         let cumulativeLinesCleared = 0;
         let pieceIndex = 1;
@@ -740,6 +811,9 @@ function setupTutorMaker() {'use strict';
         PauseHowLongBetweenPieces = parseFloat(document.querySelector(`#${timePerPieceID}`).value);
         await loadComponents(thumbnailContent);
         pieceIndex = 1;
+        if (!IsChallengeMode) {
+            await updateSectionMapContent(mapListsByPieceIndex[0], fumenForFirstPage);
+        }
         for (const page of pages) {
             if (HowManyBlocks > 0 && pieceIndex > HowManyBlocks) {
                 break;
