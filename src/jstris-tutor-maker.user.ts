@@ -2,7 +2,7 @@
 // @name         Jstris Tutor Maker
 // @license      BSD-2-Clause
 // @namespace    Jstris Tutor Maker
-// @version      0.3.3
+// @version      0.3.4
 // @description  Helps you make a Jstris usermode for placing a queue of pieces in the right spots
 // @author       TSTman
 // @match        https://jstris.jezevec10.com/usermodes/create*
@@ -151,6 +151,16 @@ function setupTutorMaker() {
         }
     }
 
+    const TextPositionValueNextToBoard = 2;
+
+    class Text extends Component {
+        constructor(position: number, text: string) {
+            super('text');
+            this.opts['pos'] = position;
+            this.opts['text'] = text;
+        }
+    }
+
     class Trigger extends Component {
         constructor(triggerType: number, triggerArg: string | null) {
             super('trig');
@@ -191,6 +201,10 @@ function setupTutorMaker() {
     async function addComponent(component: Component) {
         componentList.push(component);
         await sleep();
+    }
+
+    async function newText(position: number, text: string) {
+        await addComponent(new Text(position, text));
     }
 
     // newTrigger creates a new Trigger component
@@ -394,8 +408,9 @@ function setupTutorMaker() {
         }
     }
 
-    async function makeDemoCycles(blockCount: number, totalBlocks: number, queue: string, finalTriggerID: string, mapListsBySection: Object): Promise<void> {
+    async function makeDemoCycles(section: number, blockCount: number, totalBlocks: number, queue: string, finalTriggerID: string, mapListsBySection: Object): Promise<void> {
         let holdPiece = demoHoldPieces[blockCount];
+        await newText(TextPositionValueNextToBoard, `Stage ${section}`);
         for (; blockCount <= totalBlocks; blockCount++) {
             let triggerSuffix = '';
             let triggerSection = 1;
@@ -681,7 +696,7 @@ function setupTutorMaker() {
                     sectionFinalBlockCount = HowManyBlocks;
                 }
                 if (!IsChallengeMode && sectionBeginningBlockCount <= howManyDemoBlocks) {
-                    await makeDemoCycles(sectionBeginningBlockCount, sectionFinalBlockCount, demoQueues[sectionBeginningBlockCount], playTriggerID, mapListsByPieceIndex);
+                    await makeDemoCycles(section, sectionBeginningBlockCount, sectionFinalBlockCount, demoQueues[sectionBeginningBlockCount], playTriggerID, mapListsByPieceIndex);
                 } else {
                     await newRun(playTriggerID);
                 }

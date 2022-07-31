@@ -2,7 +2,7 @@
 // @name         Jstris Tutor Maker
 // @license      BSD-2-Clause
 // @namespace    Jstris Tutor Maker
-// @version      0.3.3
+// @version      0.3.4
 // @description  Helps you make a Jstris usermode for placing a queue of pieces in the right spots
 // @author       TSTman
 // @match        https://jstris.jezevec10.com/usermodes/create*
@@ -135,6 +135,16 @@ function setupTutorMaker() {'use strict';
         }
     }
 
+    const TextPositionValueNextToBoard = 2;
+
+    class Text extends Component {
+        constructor(position, text) {
+            super('text');
+            this.opts['pos'] = position;
+            this.opts['text'] = text;
+        }
+    }
+
     class Trigger extends Component {
         constructor(triggerType, triggerArg) {
             super('trig');
@@ -175,6 +185,10 @@ function setupTutorMaker() {'use strict';
     async function addComponent(component) {
         componentList.push(component);
         await sleep();
+    }
+
+    async function newText(position, text) {
+        await addComponent(new Text(position, text));
     }
 
     // newTrigger creates a new Trigger component
@@ -376,8 +390,9 @@ function setupTutorMaker() {'use strict';
         }
     }
 
-    async function makeDemoCycles(blockCount, totalBlocks, queue, finalTriggerID, mapListsBySection) {
+    async function makeDemoCycles(section, blockCount, totalBlocks, queue, finalTriggerID, mapListsBySection) {
         let holdPiece = demoHoldPieces[blockCount];
+        await newText(TextPositionValueNextToBoard, `Stage ${section}`);
         for (; blockCount <= totalBlocks; blockCount++) {
             let triggerSuffix = '';
             let triggerSection = 1;
@@ -647,7 +662,7 @@ function setupTutorMaker() {'use strict';
                     sectionFinalBlockCount = HowManyBlocks;
                 }
                 if (!IsChallengeMode && sectionBeginningBlockCount <= howManyDemoBlocks) {
-                    await makeDemoCycles(sectionBeginningBlockCount, sectionFinalBlockCount, demoQueues[sectionBeginningBlockCount], playTriggerID, mapListsByPieceIndex);
+                    await makeDemoCycles(section, sectionBeginningBlockCount, sectionFinalBlockCount, demoQueues[sectionBeginningBlockCount], playTriggerID, mapListsByPieceIndex);
                 } else {
                     await newRun(playTriggerID);
                 }
