@@ -691,7 +691,7 @@ function setupTutorMaker() {
             }
 
             await initUserMode(queues[1], doneStageTriggerIDs);
-            if (!IsChallengeMode && howManyDemoBlocks > 0) {
+            if (howManyDemoBlocks > 0) {
                 mapListsByPieceIndex[0] = Array<MapComponent>(await newMap(MapTypeReplaceBoard));
             }
 
@@ -714,10 +714,9 @@ function setupTutorMaker() {
                 if (firstSection || (!IsChallengeMode && sectionBeginningBlockCount <= howManyDemoBlocks)) {
                     await newQueueChange(queues[sectionBeginningBlockCount], holdPieces[sectionBeginningBlockCount], true, false, (IsChallengeMode || sectionBeginningBlockCount > howManyDemoBlocks) && holdPieces[sectionBeginningBlockCount].length === 1);
                 }
+                mapListsByPieceIndex[sectionBeginningBlockCount - 1].push(transitionMap);
                 if (firstSection) {
                     firstSection = false;
-                } else {
-                    mapListsByPieceIndex[sectionBeginningBlockCount - 1].push(transitionMap);
                 }
 
                 await makeCycles(section, playTriggerID, placedTriggerID, doneStageTriggerIDs, sectionBeginningBlockCount, sectionFinalBlockCount, mapListsByPieceIndex);
@@ -890,9 +889,7 @@ function setupTutorMaker() {
 
         await loadComponents(thumbnailContent);
         pieceIndex = 1;
-        if (!IsChallengeMode) {
-            await updateSectionMapContent(mapListsByPieceIndex[0], fumenForFirstPage);
-        }
+        await updateSectionMapContent(mapListsByPieceIndex[0], fumenForFirstPage);
         for (const page of pages) {
             if (HowManyBlocks > 0 && pieceIndex > HowManyBlocks) {
                 break;
