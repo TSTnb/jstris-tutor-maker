@@ -167,6 +167,8 @@ function setupTutorMaker() {'use strict';
     const TriggerTypeNever = 9;
     const TriggerTypeOnGameStart = 10;
     const TriggerIDTwoLinePC = '2_line_PC';
+    const TriggerCheckBoard = 'CheckBoard';
+    const TriggerCheckLoop = 'CheckLoop';
     const TriggerIDDefaultRuleset = 'default_ruleset';
 
     async function saveTextInput(element, value) {
@@ -341,6 +343,10 @@ function setupTutorMaker() {'use strict';
             const waitForBlocks = blockCount === HowManyBlocks && blockCount % HowManyBlocksPerSection !== 0 ?
                 blockCount % HowManyBlocksPerSection : HowManyBlocksPerSection;
             await newRelativeTrigger(RelativeTriggerTypeBlocks, waitForBlocks, placedTriggerID);
+            if (blockCount === howManyDemoBlocks && howManyDemoBlocks < HowManyBlocks) {
+                await newComponentSwitch({triggerID: TriggerCheckLoop, on: true});
+            }
+            await newRun(TriggerCheckBoard);
             await newTrigger(TriggerTypeExternalConditional, placedTriggerID);
         }
         mapListForBlock.push(await newMap(MapTypeSubtractFromCurrentBoard));
@@ -379,7 +385,7 @@ function setupTutorMaker() {'use strict';
         if (!IsChallengeMode && blockCount <= howManyDemoBlocks) {
             await newRun(doneStageTriggerID);
             await newTrigger(TriggerTypeExternalConditional, doneStageTriggerID);
-            if (blockCount >= howManyDemoBlocks) {
+            if (blockCount >= HowManyBlocks) {
                 await newCondition(ConditionTypeCustomExpression, 'blocks>=0', true, ConditionResultTypeSuccessfulGameEnd);
             } else {
                 await newComponentSwitch({triggerID: doneStageTriggerIDs[sectionCount + 1], on: false});
@@ -445,6 +451,9 @@ function setupTutorMaker() {'use strict';
         await newTrigger(TriggerTypeOnGameStart, null);
         if (!IsChallengeMode && howManyDemoBlocks > 0) {
             await newQueueChange(queue, QueueHoldPieceNone, true, false);
+            if (howManyDemoBlocks < HowManyBlocks) {
+                await newComponentSwitch({triggerID: TriggerCheckLoop, on: false});
+            }
         }
         const initDoneTriggerID = doneStageTriggerIDs[0];
         await newRun(initDoneTriggerID);
@@ -690,6 +699,14 @@ function setupTutorMaker() {'use strict';
             // 7 more blocks to be placed, then loops back to 2_line_PC
             await newTrigger(TriggerTypeExternalConditional, TriggerIDDefaultRuleset);
             await newRuleset(RulesetTypeDefault);
+            if (!IsChallengeMode) {
+                if (howManyDemoBlocks < HowManyBlocks) {
+                    await newRun(TriggerCheckLoop);
+                    await newTrigger(TriggerTypeExternalConditional, TriggerCheckLoop);
+                    await newRelativeTrigger(RelativeTriggerTypeBlocks, 7, TriggerIDTwoLinePC);
+                }
+                await newTrigger(TriggerTypeExternalConditional, TriggerCheckBoard);
+            }
             await newRelativeTrigger(RelativeTriggerTypeBlocks, 7, TriggerIDTwoLinePC);
         }
     }
