@@ -59,6 +59,17 @@ function setupTutorMaker() {'use strict';
     // use in order to complete your usermode
     let HowManyBlocks = 0;
 
+    // loadMapType is necessary because https://jstris.jezevec10.com/usermodes/create has a global JavaScript object named Map
+    async function loadMapType() {
+        const mapLoader = new Worker('data:application/javascript,onmessage = function () { postMessage(new%20Map()) }');
+        return await new Promise(resolve => {
+            mapLoader.onmessage = (event) => resolve(event.data.constructor);
+            mapLoader.postMessage('Get Map type');
+        });
+    }
+
+    const Map = await loadMapType();
+
     class Component {
         constructor(fieldType) {
             this.opts = {};
@@ -396,7 +407,7 @@ function setupTutorMaker() {'use strict';
         }
     }
 
-    async function makeDemoCycles(section, blockCount, totalBlocks, queue, finalTriggerID, mapListsBySection) {
+    async function makeDemoCycles(section, blockCount, totalBlocks, queue, finalTriggerID, mapListsByPieceIndex) {
         let holdPiece = demoHoldPieces[blockCount];
         await newText(TextPositionValueNextToBoard, `Stage ${section}`);
         for (; blockCount <= totalBlocks; blockCount++) {
@@ -408,8 +419,8 @@ function setupTutorMaker() {'use strict';
                 queue = holdPiece + queue.slice(2);
                 holdPiece = swap;
             }
-            if (!(mapListsBySection[blockCount] instanceof Array)) {
-                mapListsBySection[blockCount] = new Array();
+            if (!(mapListsByPieceIndex.get(blockCount) instanceof Array)) {
+                mapListsByPieceIndex.set(blockCount, new Array());
             }
             if (typeof fumenWithFullLines[blockCount] === 'string') {
                 triggerSuffix = `_part_${triggerSection}`;
@@ -419,25 +430,24 @@ function setupTutorMaker() {'use strict';
                 triggerSection++;
                 triggerSuffix = `_part_${triggerSection}`;
                 demoTriggerID = `demo_block${blockCount}` + triggerSuffix;
-                mapsWithFullLines[blockCount] = await newMap(MapTypeReplaceBoard);
-                await updateMapContent(mapsWithFullLines[blockCount], fumenWithFullLines[blockCount]);
+                await updateMapContent(await newMap(MapTypeReplaceBoard), fumenWithFullLines.get(blockCount));
             }
-            await demoCycle(blockCount, demoTriggerID, queue, mapListsBySection[blockCount]);
+            await demoCycle(blockCount, demoTriggerID, queue, mapListsByPieceIndex.get(blockCount));
             queue = queue.slice(1);
         }
         await newRelativeTrigger(RelativeTriggerTypeTime, PauseHowLongBetweenPieces * 2, finalTriggerID);
     }
 
     // 1 cycle per block in BlockQueue
-    async function makeCycles(sectionCount, playTriggerID, placedTriggerID, doneStageTriggerIDs, blockCount, lastBlockInSection, mapListsBySection) {
+    async function makeCycles(stageCount, playTriggerID, placedTriggerID, doneStageTriggerIDs, blockCount, lastBlockInStage, mapListsByPieceIndex) {
         const startingBlockCount = blockCount;
-        for (; blockCount <= lastBlockInSection; blockCount++) {
-            if (!(mapListsBySection[blockCount] instanceof Array)) {
-                mapListsBySection[blockCount] = new Array();
+        for (; blockCount <= lastBlockInStage; blockCount++) {
+            if (!(mapListsByPieceIndex.get(blockCount) instanceof Array)) {
+                mapListsByPieceIndex.set(blockCount, new Array());
             }
-            const lastCycleInStage = blockCount === lastBlockInSection;
+            const lastCycleInStage = blockCount === lastBlockInStage;
             if (lastCycleInStage) {
-                await cycle(sectionCount, playTriggerID, placedTriggerID, doneStageTriggerIDs, startingBlockCount, blockCount, queues, holdPieces, mapListsBySection[blockCount]);
+                await cycle(stageCount, playTriggerID, placedTriggerID, doneStageTriggerIDs, startingBlockCount, blockCount, queues, holdPieces, mapListsByPieceIndex.get(blockCount));
             }
         }
         if (!IsChallengeMode && blockCount <= howManyDemoBlocks) {
@@ -597,9 +607,10 @@ function setupTutorMaker() {'use strict';
         return loadFumenButton;
     }
 
-    let mapListsByPieceIndex = {};
-    let fumenWithFullLines = {};
-    let mapsWithFullLines = {};
+    let mapListsByPieceIndex = new Map();
+    let fumenWithFullLines = new Map();
+    let mapChanges = {};
+    let mapsWithChanges = {};
 
     function setDefaultRuleset() {
         const defaultRuleset = {};
@@ -640,7 +651,7 @@ function setupTutorMaker() {'use strict';
             await newTrigger(TriggerTypeNever);
             await newMap(MapTypeReplaceBoard, thumbnailContent);
         }
-        mapListsByPieceIndex = {};
+        mapListsByPieceIndex = new Map();
         hasHold = BlockQueue.search(QueueHoldPiece) > -1;
         setDefaultRuleset();
         if (!(fumenSaveButton() instanceof HTMLButtonElement)) {
@@ -659,7 +670,7 @@ function setupTutorMaker() {'use strict';
                 doneStageTriggerIDs[section] = `DonStag${section}`;
             }
             await initUserMode(queues[1], doneStageTriggerIDs);
-            mapListsByPieceIndex[0] = Array(await newMap(MapTypeReplaceBoard));
+            mapListsByPieceIndex.set(0, Array(await newMap(MapTypeReplaceBoard)));
             for (let section = 1; section <= totalSections; section++) {
                 const playTriggerID = `Stage${section}`;
                 const placedTriggerID = `placed_stage${section}`;
@@ -678,7 +689,7 @@ function setupTutorMaker() {'use strict';
                 if (firstSection || (!IsChallengeMode && sectionBeginningBlockCount <= howManyDemoBlocks)) {
                     await newQueueChange(queues[sectionBeginningBlockCount], holdPieces[sectionBeginningBlockCount], true, false, (IsChallengeMode || sectionBeginningBlockCount > howManyDemoBlocks) && holdPieces[sectionBeginningBlockCount].length === 1);
                 }
-                mapListsByPieceIndex[sectionBeginningBlockCount - 1].push(transitionMap);
+                mapListsByPieceIndex.get(sectionBeginningBlockCount - 1).push(transitionMap);
                 if (firstSection) {
                     firstSection = false;
                 }
@@ -708,10 +719,10 @@ function setupTutorMaker() {'use strict';
         }
     }
 
-    (async function () {
+    await (async function () {
         await fumenSection();
     })();
-    const JstrisPiece = {
+    const JstrisPiece = new Map(Object.entries({
         'Empty': 0,
         'Z': 1,
         'L': 2,
@@ -721,12 +732,12 @@ function setupTutorMaker() {'use strict';
         'J': 6,
         'T': 7,
         'Gray': 8,
-    };
-    const JstrisPieceByFumenPiece = {};
+    }));
+    const JstrisPieceByFumenPiece = new Map();
 
     function mapFumenPiecesToJstrisPieces(fumen) {
-        for (let piece in JstrisPiece) {
-            JstrisPieceByFumenPiece[fumen.Piece[piece]] = JstrisPiece[piece];
+        for (const [piece, jstrisPiece] of JstrisPiece) {
+            JstrisPieceByFumenPiece.set(fumen.Piece[piece], jstrisPiece);
         }
     }
 
@@ -806,7 +817,7 @@ function setupTutorMaker() {'use strict';
         BlockQueue = blockQueueFromPages(fumen, pages);
         totalLinesCleared = Array(pages.length + 1).fill(0);
         actualPCCounts = Array(pages.length + 1).fill(0);
-        fumenWithFullLines = {};
+        fumenWithFullLines = new Map();
         let cumulativeLinesCleared = 0;
         let pieceIndex = 1;
         for (const page of pages) {
@@ -817,7 +828,7 @@ function setupTutorMaker() {'use strict';
             const linesBeforeClearing = page['_field'].field.pieces.slice();
             const clearedThisPage = countLineClears(fumen, page, pieceIndex);
             if (clearedThisPage > 0) {
-                fumenWithFullLines[pieceIndex] = fumenToMapData(fumen, linesBeforeClearing);
+                fumenWithFullLines.set(pieceIndex, fumenToMapData(fumen, linesBeforeClearing));
             }
             cumulativeLinesCleared += clearedThisPage;
             totalLinesCleared[pieceIndex] = cumulativeLinesCleared;
@@ -840,12 +851,12 @@ function setupTutorMaker() {'use strict';
         PauseHowLongBetweenPieces = parseFloat(document.querySelector(`#${timePerPieceID}`).value);
         await loadComponents(thumbnailContent);
         pieceIndex = 1;
-        await updateSectionMapContent(mapListsByPieceIndex[0], fumenForFirstPage);
+        await updateSectionMapContent(mapListsByPieceIndex.get(0), fumenForFirstPage);
         for (const page of pages) {
             if (HowManyBlocks > 0 && pieceIndex > HowManyBlocks) {
                 break;
             }
-            await updateSectionMapContent(mapListsByPieceIndex[pieceIndex], fumenToMapData(fumen, page['_field'].field['pieces']));
+            await updateSectionMapContent(mapListsByPieceIndex.get(pieceIndex), fumenToMapData(fumen, page['_field'].field['pieces']));
             pieceIndex++;
         }
         clearInterval(progressInterval);
@@ -943,8 +954,8 @@ function setupTutorMaker() {'use strict';
         let fieldIndex = fieldSize;
         for (let row = 0; row < rowCount; row++) {
             for (let column = columnCount - 2; column >= 0; column -= 2) {
-                mapDataField[--fieldIndex] = JstrisPieceByFumenPiece[fieldPieces[columnCount * row + column]] << 4 |
-                    JstrisPieceByFumenPiece[fieldPieces[columnCount * row + column + 1]];
+                mapDataField[--fieldIndex] = JstrisPieceByFumenPiece.get(fieldPieces[columnCount * row + column]) << 4 |
+                    JstrisPieceByFumenPiece.get(fieldPieces[columnCount * row + column + 1]);
             }
         }
         return window.btoa(String.fromCharCode.apply(null, mapDataField));

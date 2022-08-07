@@ -11,13 +11,13 @@
 // @grant        none
 // ==/UserScript==
 
-import {Page, Pages} from "tetris-fumen/lib/decoder";
-import {Mino} from "tetris-fumen";
-import {PlayField} from "tetris-fumen/lib/inner_field";
-import {Operation as FieldOperation} from "tetris-fumen/lib/field";
-import {Quiz} from "tetris-fumen/lib/quiz";
+import {Page, Pages} from 'tetris-fumen/lib/decoder';
+import {Mino} from 'tetris-fumen';
+import {PlayField} from 'tetris-fumen/lib/inner_field';
+import {Operation as FieldOperation} from 'tetris-fumen/lib/field';
+import {Quiz} from 'tetris-fumen/lib/quiz';
 
-function setupTutorMaker() {
+async function setupTutorMaker() {
     'use strict';
 
     // Uncomment an ExampleFumen below (only 1 at a time) to see how it works with Jstris Tutor Maker.
@@ -67,6 +67,17 @@ function setupTutorMaker() {
     // HowManyBlocks starts out at 0 and is set after you load a Fumen. It becomes the number of blocks the player must
     // use in order to complete your usermode
     let HowManyBlocks = 0;
+
+    // loadMapType is necessary because https://jstris.jezevec10.com/usermodes/create has a global JavaScript object named Map
+    async function loadMapType(): Promise<typeof Map> {
+        const mapLoader = new Worker('data:application/javascript,onmessage = function () { postMessage(new%20Map()) }');
+        return await new Promise(resolve => {
+            mapLoader.onmessage = (event: MessageEvent) => resolve(event.data.constructor);
+            mapLoader.postMessage('Get Map type');
+        });
+    }
+
+    const Map: typeof window.Map = await loadMapType();
 
     abstract class Component {
         constructor(fieldType: string) {
@@ -414,7 +425,7 @@ function setupTutorMaker() {
         }
     }
 
-    async function makeDemoCycles(section: number, blockCount: number, totalBlocks: number, queue: string, finalTriggerID: string, mapListsBySection: Object): Promise<void> {
+    async function makeDemoCycles(section: number, blockCount: number, totalBlocks: number, queue: string, finalTriggerID: string, mapListsByPieceIndex: Map<number, Array<MapComponent>>): Promise<void> {
         let holdPiece = demoHoldPieces[blockCount];
         await newText(TextPositionValueNextToBoard, `Stage ${section}`);
         for (; blockCount <= totalBlocks; blockCount++) {
@@ -426,8 +437,8 @@ function setupTutorMaker() {
                 queue = holdPiece + queue.slice(2);
                 holdPiece = swap;
             }
-            if (!(mapListsBySection[blockCount] instanceof Array)) {
-                mapListsBySection[blockCount] = new Array<MapComponent>();
+            if (!(mapListsByPieceIndex.get(blockCount) instanceof Array)) {
+                mapListsByPieceIndex.set(blockCount, new Array<MapComponent>());
             }
             if (typeof fumenWithFullLines[blockCount] === 'string') {
                 triggerSuffix = `_part_${triggerSection}`;
@@ -437,25 +448,24 @@ function setupTutorMaker() {
                 triggerSection++;
                 triggerSuffix = `_part_${triggerSection}`;
                 demoTriggerID = `demo_block${blockCount}` + triggerSuffix
-                mapsWithFullLines[blockCount] = await newMap(MapTypeReplaceBoard);
-                await updateMapContent(mapsWithFullLines[blockCount], fumenWithFullLines[blockCount]);
+                await updateMapContent(await newMap(MapTypeReplaceBoard), fumenWithFullLines.get(blockCount));
             }
-            await demoCycle(blockCount, demoTriggerID, queue, mapListsBySection[blockCount]);
+            await demoCycle(blockCount, demoTriggerID, queue, mapListsByPieceIndex.get(blockCount));
             queue = queue.slice(1);
         }
         await newRelativeTrigger(RelativeTriggerTypeTime, PauseHowLongBetweenPieces * 2, finalTriggerID);
     }
 
     // 1 cycle per block in BlockQueue
-    async function makeCycles(sectionCount: number, playTriggerID: string, placedTriggerID: string, doneStageTriggerIDs: string[], blockCount: number, lastBlockInSection: number, mapListsBySection: Object): Promise<void> {
+    async function makeCycles(stageCount: number, playTriggerID: string, placedTriggerID: string, doneStageTriggerIDs: string[], blockCount: number, lastBlockInStage: number, mapListsByPieceIndex: Map<number, Array<MapComponent>>): Promise<void> {
         const startingBlockCount = blockCount;
-        for (; blockCount <= lastBlockInSection; blockCount++) {
-            if (!(mapListsBySection[blockCount] instanceof Array)) {
-                mapListsBySection[blockCount] = new Array<MapComponent>();
+        for (; blockCount <= lastBlockInStage; blockCount++) {
+            if (!(mapListsByPieceIndex.get(blockCount) instanceof Array)) {
+                mapListsByPieceIndex.set(blockCount, new Array<MapComponent>());
             }
-            const lastCycleInStage = blockCount === lastBlockInSection;
+            const lastCycleInStage = blockCount === lastBlockInStage;
             if (lastCycleInStage) {
-                await cycle(sectionCount, playTriggerID, placedTriggerID, doneStageTriggerIDs, startingBlockCount, blockCount, queues, holdPieces, mapListsBySection[blockCount]);
+                await cycle(stageCount, playTriggerID, placedTriggerID, doneStageTriggerIDs, startingBlockCount, blockCount, queues, holdPieces, mapListsByPieceIndex.get(blockCount));
             }
         }
         if (!IsChallengeMode && blockCount <= howManyDemoBlocks) {
@@ -625,9 +635,10 @@ function setupTutorMaker() {
         return loadFumenButton;
     }
 
-    let mapListsByPieceIndex: Object = {};
-    let fumenWithFullLines: Object = {};
-    let mapsWithFullLines: Object = {};
+    let mapListsByPieceIndex: Map<number, Array<MapComponent>> = new Map();
+    let fumenWithFullLines: Map<number, string> = new Map();
+    let mapChanges: Object = {};
+    let mapsWithChanges: Object = {};
 
     function setDefaultRuleset() {
         const defaultRuleset = {};
@@ -670,7 +681,7 @@ function setupTutorMaker() {
             await newMap(MapTypeReplaceBoard, thumbnailContent);
         }
 
-        mapListsByPieceIndex = {};
+        mapListsByPieceIndex = new Map();
         hasHold = BlockQueue.search(QueueHoldPiece) > -1;
         setDefaultRuleset();
         if (!(fumenSaveButton() instanceof HTMLButtonElement)) {
@@ -691,7 +702,7 @@ function setupTutorMaker() {
             }
 
             await initUserMode(queues[1], doneStageTriggerIDs);
-            mapListsByPieceIndex[0] = Array<MapComponent>(await newMap(MapTypeReplaceBoard));
+            mapListsByPieceIndex.set(0, Array<MapComponent>(await newMap(MapTypeReplaceBoard)));
 
 
             for (let section = 1; section <= totalSections; section++) {
@@ -712,7 +723,7 @@ function setupTutorMaker() {
                 if (firstSection || (!IsChallengeMode && sectionBeginningBlockCount <= howManyDemoBlocks)) {
                     await newQueueChange(queues[sectionBeginningBlockCount], holdPieces[sectionBeginningBlockCount], true, false, (IsChallengeMode || sectionBeginningBlockCount > howManyDemoBlocks) && holdPieces[sectionBeginningBlockCount].length === 1);
                 }
-                mapListsByPieceIndex[sectionBeginningBlockCount - 1].push(transitionMap);
+                mapListsByPieceIndex.get(sectionBeginningBlockCount - 1).push(transitionMap);
                 if (firstSection) {
                     firstSection = false;
                 }
@@ -746,11 +757,11 @@ function setupTutorMaker() {
         }
     }
 
-    (async function () {
+    await (async function () {
         await fumenSection();
     })();
 
-    const JstrisPiece: Object = {
+    const JstrisPiece: Map<string, number> = new Map(Object.entries({
         'Empty': 0,
         'Z': 1,
         'L': 2,
@@ -760,13 +771,13 @@ function setupTutorMaker() {
         'J': 6,
         'T': 7,
         'Gray': 8,
-    }
+    }));
 
-    const JstrisPieceByFumenPiece: Object = {};
+    const JstrisPieceByFumenPiece: Map<number, number> = new Map();
 
     function mapFumenPiecesToJstrisPieces(fumen) {
-        for (let piece in JstrisPiece) {
-            JstrisPieceByFumenPiece[fumen.Piece[piece]] = JstrisPiece[piece];
+        for (const [piece, jstrisPiece] of JstrisPiece) {
+            JstrisPieceByFumenPiece.set(fumen.Piece[piece], jstrisPiece);
         }
     }
 
@@ -850,7 +861,7 @@ function setupTutorMaker() {
         BlockQueue = blockQueueFromPages(fumen, pages);
         totalLinesCleared = Array(pages.length + 1).fill(0);
         actualPCCounts = Array(pages.length + 1).fill(0);
-        fumenWithFullLines = {};
+        fumenWithFullLines = new Map();
         let cumulativeLinesCleared = 0;
         let pieceIndex = 1;
         for (const page of pages) {
@@ -861,7 +872,7 @@ function setupTutorMaker() {
             const linesBeforeClearing: Array<number> = page['_field'].field.pieces.slice();
             const clearedThisPage = countLineClears(fumen, page, pieceIndex);
             if (clearedThisPage > 0) {
-                fumenWithFullLines[pieceIndex] = fumenToMapData(fumen, linesBeforeClearing);
+                fumenWithFullLines.set(pieceIndex, fumenToMapData(fumen, linesBeforeClearing));
             }
             cumulativeLinesCleared += clearedThisPage;
             totalLinesCleared[pieceIndex] = cumulativeLinesCleared;
@@ -887,12 +898,12 @@ function setupTutorMaker() {
 
         await loadComponents(thumbnailContent);
         pieceIndex = 1;
-        await updateSectionMapContent(mapListsByPieceIndex[0], fumenForFirstPage);
+        await updateSectionMapContent(mapListsByPieceIndex.get(0), fumenForFirstPage);
         for (const page of pages) {
             if (HowManyBlocks > 0 && pieceIndex > HowManyBlocks) {
                 break;
             }
-            await updateSectionMapContent(mapListsByPieceIndex[pieceIndex], fumenToMapData(fumen, page['_field'].field['pieces']));
+            await updateSectionMapContent(mapListsByPieceIndex.get(pieceIndex), fumenToMapData(fumen, page['_field'].field['pieces']));
             pieceIndex++;
         }
         clearInterval(progressInterval);
@@ -997,8 +1008,8 @@ function setupTutorMaker() {
         let fieldIndex = fieldSize;
         for (let row = 0; row < rowCount; row++) {
             for (let column = columnCount - 2; column >= 0; column -= 2) {
-                mapDataField[--fieldIndex] = JstrisPieceByFumenPiece[fieldPieces[columnCount * row + column]] << 4 |
-                    JstrisPieceByFumenPiece[fieldPieces[columnCount * row + column + 1]];
+                mapDataField[--fieldIndex] = JstrisPieceByFumenPiece.get(fieldPieces[columnCount * row + column]) << 4 |
+                    JstrisPieceByFumenPiece.get(fieldPieces[columnCount * row + column + 1]);
             }
         }
         return window.btoa(String.fromCharCode.apply(null, mapDataField));
