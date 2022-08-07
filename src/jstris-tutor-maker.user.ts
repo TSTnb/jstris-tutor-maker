@@ -467,7 +467,7 @@ function setupTutorMaker() {
         await newTrigger(TriggerTypeBeforeGame, null);
         await newQueueChange(queue, QueueHoldPieceNone, true, false);
         await newTrigger(TriggerTypeOnGameStart, null);
-        if (!IsChallengeMode && howManyDemoBlocks > 0) {
+        if (!IsChallengeMode) {
             await newQueueChange(queue, QueueHoldPieceNone, true, false);
             if (howManyDemoBlocks < HowManyBlocks) {
                 await newComponentSwitch({triggerID: TriggerCheckLoop, on: false});
@@ -476,7 +476,7 @@ function setupTutorMaker() {
         const initDoneTriggerID = doneStageTriggerIDs[0];
         await newRun(initDoneTriggerID);
         await newTrigger(TriggerTypeExternalConditional, initDoneTriggerID);
-        if (!IsChallengeMode && howManyDemoBlocks > 0) {
+        if (!IsChallengeMode) {
             await newComponentSwitch({triggerID: doneStageTriggerIDs[1], on: false})
         }
         await newRun(TriggerIDDefaultRuleset);
@@ -691,9 +691,7 @@ function setupTutorMaker() {
             }
 
             await initUserMode(queues[1], doneStageTriggerIDs);
-            if (howManyDemoBlocks > 0) {
-                mapListsByPieceIndex[0] = Array<MapComponent>(await newMap(MapTypeReplaceBoard));
-            }
+            mapListsByPieceIndex[0] = Array<MapComponent>(await newMap(MapTypeReplaceBoard));
 
 
             for (let section = 1; section <= totalSections; section++) {

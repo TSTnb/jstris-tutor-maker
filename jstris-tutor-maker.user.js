@@ -449,7 +449,7 @@ function setupTutorMaker() {'use strict';
         await newTrigger(TriggerTypeBeforeGame, null);
         await newQueueChange(queue, QueueHoldPieceNone, true, false);
         await newTrigger(TriggerTypeOnGameStart, null);
-        if (!IsChallengeMode && howManyDemoBlocks > 0) {
+        if (!IsChallengeMode) {
             await newQueueChange(queue, QueueHoldPieceNone, true, false);
             if (howManyDemoBlocks < HowManyBlocks) {
                 await newComponentSwitch({triggerID: TriggerCheckLoop, on: false});
@@ -458,7 +458,7 @@ function setupTutorMaker() {'use strict';
         const initDoneTriggerID = doneStageTriggerIDs[0];
         await newRun(initDoneTriggerID);
         await newTrigger(TriggerTypeExternalConditional, initDoneTriggerID);
-        if (!IsChallengeMode && howManyDemoBlocks > 0) {
+        if (!IsChallengeMode) {
             await newComponentSwitch({triggerID: doneStageTriggerIDs[1], on: false});
         }
         await newRun(TriggerIDDefaultRuleset);
@@ -659,9 +659,7 @@ function setupTutorMaker() {'use strict';
                 doneStageTriggerIDs[section] = `DonStag${section}`;
             }
             await initUserMode(queues[1], doneStageTriggerIDs);
-            if (howManyDemoBlocks > 0) {
-                mapListsByPieceIndex[0] = Array(await newMap(MapTypeReplaceBoard));
-            }
+            mapListsByPieceIndex[0] = Array(await newMap(MapTypeReplaceBoard));
             for (let section = 1; section <= totalSections; section++) {
                 const playTriggerID = `Stage${section}`;
                 const placedTriggerID = `placed_stage${section}`;
