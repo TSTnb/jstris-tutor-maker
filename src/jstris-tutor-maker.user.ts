@@ -2,7 +2,7 @@
 // @name         Jstris Tutor Maker
 // @license      BSD-2-Clause
 // @namespace    Jstris Tutor Maker
-// @version      0.3.4
+// @version      0.4.0
 // @description  Helps you make a Jstris usermode for placing a queue of pieces in the right spots
 // @author       TSTman
 // @match        https://jstris.jezevec10.com/usermodes/create*
@@ -23,7 +23,7 @@ async function setupTutorMaker() {
     // Uncomment an ExampleFumen below (only 1 at a time) to see how it works with Jstris Tutor Maker.
 
     // Thumbnail + 3 bags of fesh sprint
-    let ExampleFumen = 'v115@ZfA8Bek0BeB8j0Aeh0AeB8g0A8k0AeB8g0B8j0AeA8?Bek0lfAglZfAABekHBeBAjHAehHAeBAgHAAkHAeBAgHBAjH?AeAABekHlf2uQ9BFLDmClcJSAVDEHBEooRBPoAVBKNUFDU+?DxCaeHgCzuPFDMXltCTXNPC0XEWCadNPCvuLuCMHmPCpyTx?CaeHgCsvTxCJnzPCJ3TWC6ujWCpvbgCU3jFDK+DxCzyKxCK?ezPCMdFgC6OOMCvintC6P9VCa3TxCsAAAAvhTzkBifB0sB9?tBXjBplBqrBFiBJmB+tBsrBnsBTpBOrBNqB6qBTpBxrBHtB?MtB';
+    //let ExampleFumen = 'v115@ZfA8Bek0BeB8j0Aeh0AeB8g0A8k0AeB8g0B8j0AeA8?Bek0lfAglZfAABekHBeBAjHAehHAeBAgHAAkHAeBAgHBAjH?AeAABekHlf2uQ9BFLDmClcJSAVDEHBEooRBPoAVBKNUFDU+?DxCaeHgCzuPFDMXltCTXNPC0XEWCadNPCvuLuCMHmPCpyTx?CaeHgCsvTxCJnzPCJ3TWC6ujWCpvbgCU3jFDK+DxCzyKxCK?ezPCMdFgC6OOMCvintC6P9VCa3TxCsAAAAvhTzkBifB0sB9?tBXjBplBqrBFiBJmB+tBsrBnsBTpBOrBNqB6qBTpBxrBHtB?MtB';
 
     // Test single line clears:
     //let ExampleFumen = 'v115@vhJSSYtAFLDmClcJSAVDEHBEooRBMoAVBU3LMC6f/w?CpHLWCTO1LCJO1LCJO1LCpAAAA1wBTpB3qBxpBUsBWtBOmB?FqBctB';
@@ -49,6 +49,9 @@ async function setupTutorMaker() {
     // Holdless:
     //let ExampleFumen = 'v115@vhFRQYoAFLDmClcJSAVDEHBEooRBJoAVB6ybgCq+yt?C6/7LCUtzPCpOMgCUmBKpBvsBTtB+jf8gg0Ieg0Heh0deFq?QiAFLDmClcJSAVDEHBEooRBUoAVBPtzPCM+9tC6P9wCMHBA?AvhEzpBvrBMjBOkB6lf/ghlIeglIeglZexhQcAFLDmClcJS?AVDEHBEooRBJoAVBUtzPCpOMgCvhAlsfGhAPgHBegWwDCeA?PhHxSgWxDCegWAtxSgWQpxDAegWKe3sQaAFLDmClcJSAVDE?HBEooRBToAVB6P9wCMHBAAvhC0pBmkBxnfNhzhdelrQWAFL?DmClcJSAVDEHBEooRBUoAVBMHBAAvhBCrBTrB';
 
+    // Thumbnail + first 3 bags of Qinghan's 2022-07-23 100-piece cheese PB (185 blocks): https://jstris.jezevec10.com/replay/57182729
+    let ExampleFumen = 'v115@teilDeilSpglAehlVprlUphlQphlRphlQphlQphlRp?hlTpql3fAglteiWDeiWySgWAehW1SrW0ShWwShWxShWwShW?wShWxShWzSqWTeA8AeQ8AeH8AeE8AeK8AeF8AeJ8AeK8AeK?8AeA8Je/BQRDFLDmClcJSAVDEHBEooRBToAVBK+VWCaX9wC?v3/VCzijxCJ3jPCJ9aFDqOEWC6/9tCPOltCs/lFDPejxCM3?jPCsP9wCa9aFDvO8LCKdltCvXUPCUHExCKujFDqn9wCzyaF?DpyTxCvP9wCv/TFDT+VWCKnLuCUnzPCMujPCsHztCp+KWCq?eltC6/dgCpyjFDquLuCMuCMCq+aFDzSFgC6/9tCsyytCpXm?PCp+TWC6vaPCUHstCaebMCsvTxCvubMCzyaPCsAAAAvhEpF?BmOBNSBURBzTB+fRpwhQ4BtAewwBeRpwhF8AeF8AeJ8AeB8?xwQ4whBtA8QpA8AexwQ4FeA8AeAAMeAAAeA8IeAAAeA8IeA?AAeA8KepxAvhCdEB6HBTGBifwhIewhJeRpHeRphlBewwRpA?exwB8AeD8Q4xwh0B8QLxwQ4DeA8CeAADeAABeA8EeAAEeA8?DeA8AAGeA8CeAAFeAAA8YeMDBvhCaJBfPBKGBjfglHewhgl?HewhhlCehlQ4AexhQpCeAtglR4Aeg0B8AeE8Q4h0AeB8h0w?hA8Q4xwB8AeAtg0xhQ4CeA8BeAAEeA8AAJeA8AeAADeAADe?A8FeA8AAYe8CBvhCOHBJFBzGB1fwhAeglRpEexhglRpFewh?g0xwA8AeC8R4g0xwC8AeA8R4CeAAA8PeAAAeA8JeAAAeA8D?eA8DeAAEeAAAeA8FeAADeA8MefDBvhBFJBxNB';
+
     // IsChallengeMode decides whether this is a Tutor mode or a Challenge mode.
     let IsChallengeMode = false;
 
@@ -56,7 +59,10 @@ async function setupTutorMaker() {
     let HowManyBlocksPerSection = 7;
 
     // PauseHowLongBetweenPieces is the number of seconds to pause between steps in tutor mode
-    let PauseHowLongBetweenPieces = 0.7;
+    let PauseHowLongBetweenPieces = 0.6;
+
+    // PauseHowLongBetweenPieces is the number of seconds to pause between steps in tutor mode
+    let PauseHowLongOnLineClear = 0.2;
 
     // Set HowManyDemoSections if you want *only some* of the sections to have Demo Blocks.
     let HowManyDemoSections = 0;
@@ -85,10 +91,15 @@ async function setupTutorMaker() {
             this.field_type = fieldType;
         }
 
+        toggle(state: boolean) {
+            this.on = state;
+        }
+
         field_type: string;
         static idCounter = 0;
         id: number;
         opts: object = {};
+        on: boolean = true;
     }
 
     interface SwitchOption {
@@ -97,10 +108,23 @@ async function setupTutorMaker() {
     }
 
     class ComponentSwitch extends Component {
-        constructor(switchOption: SwitchOption) {
+        switchIndex: number;
+        static sharedSwitchIndex = 2;
+
+        constructor(...switchOptions: SwitchOption[]) {
             super('switch');
-            this.opts['id'] = switchOption.triggerID;
-            this.opts['on'] = switchOption.on;
+            this.switchIndex = 0;
+            this.add(...switchOptions);
+        }
+
+        add(...switchOptions: SwitchOption[]) {
+            for (const switchOption of switchOptions) {
+                let suffix = this.switchIndex === 0 ? '' : this.switchIndex.toString();
+                this.opts[`id${suffix}`] = switchOption.triggerID;
+                this.opts[`on${suffix}`] = switchOption.on;
+                ComponentSwitch.sharedSwitchIndex += 2;
+                this.switchIndex = ComponentSwitch.sharedSwitchIndex;
+            }
         }
     }
 
@@ -319,13 +343,17 @@ async function setupTutorMaker() {
     const ConditionResultTypeRunTriggerActions = 2;
     const ConditionResultTypeSuccessfulGameEnd = 3;
 
-    async function newComponentSwitch(switchOption: SwitchOption) {
-        await addComponent(new ComponentSwitch(switchOption));
+    async function newComponentSwitch(...switchOptions: SwitchOption[]): Promise<ComponentSwitch> {
+        const componentSwitch = new ComponentSwitch(...switchOptions);
+        await addComponent(componentSwitch);
+        return componentSwitch
     }
 
     // newCondition creates a new Condition component.
-    async function newCondition(conditionType: number, conditionValue: string, doIfTrue: boolean, conditionDo: number, conditionDo2: string | null = null) {
-        await addComponent(new Condition(conditionType, conditionValue, doIfTrue, conditionDo, conditionDo2));
+    async function newCondition(conditionType: number, conditionValue: string, doIfTrue: boolean, conditionDo: number, conditionDo2: string | null = null): Promise<Condition> {
+        const condition = new Condition(conditionType, conditionValue, doIfTrue, conditionDo, conditionDo2);
+        await addComponent(condition)
+        return condition;
     }
 
     function saveAllButton(): HTMLAnchorElement {
@@ -357,25 +385,28 @@ async function setupTutorMaker() {
         await sleep();
     }
 
-    async function demoCycle(blockCount: number, demoTriggerID: string, queue: string, mapListForBlock: Array<MapComponent>): Promise<void> {
-        await newRelativeTrigger(RelativeTriggerTypeTime, PauseHowLongBetweenPieces, demoTriggerID);
+    async function demoCycle(blockCount: number, demoTriggerID: string, queue: string, mapListForBlock: Array<MapComponent>, pauseType: number): Promise<void> {
+        await newRelativeTrigger(RelativeTriggerTypeTime, pauseType, demoTriggerID);
         await newTrigger(TriggerTypeExternalConditional, demoTriggerID)
         mapListForBlock.push(await newMap(MapTypeReplaceBoard));
-        await newQueueChange(queue.slice(1), demoHoldPieces[blockCount], true, false);
     }
 
     // cycle goes through all the the steps to make sure the user placed a single piece correctly
-    async function cycle(sectionCount: number, playTriggerID: string, placedTriggerID: string, doneStageTriggerIDs: string[], startingBlockCount: number, blockCount: number, queues: Array<string>, holdPieces: Array<string>, mapListForBlock: Array<MapComponent>): Promise<void> {
+    async function cycle(stageCount: number, stagePart: number, playTriggerID: string, placedStageTriggerIDs: PartMapsByStage<string>, judgeTriggerID: string, doneStageTriggerIDs: PartMapsByStage<string>, startingBlockCount: number, blockCount: number, lastCycleBlockCount: number, queues: Array<string>, holdPieces: Array<string>, mapListForBlock: Array<MapComponent>, lastCycleBeforeRise: boolean, startComponentsDisabled: ComponentSwitch): Promise<ComponentSwitch> {
+        const placedTriggerID = placedStageTriggerIDs.get(stageCount, stagePart);
+        const calculatedBlockCount = blockCount + stageCount - 1 + risesSoFar.get(blockCount) - risesAtStageEnd.get(blockCount);
+        const stageFinalBlockCount = startingBlockCount + HowManyBlocksPerSection - 1;
         if (IsChallengeMode || blockCount > howManyDemoBlocks) {
-            await newTrigger(TriggerTypeOnSpecificBlockNumber, (blockCount + sectionCount - 1).toString());
+            await newTrigger(TriggerTypeOnSpecificBlockNumber, calculatedBlockCount.toString());
         } else {
-            const waitForBlocks = blockCount === HowManyBlocks && blockCount % HowManyBlocksPerSection !== 0 ?
-                blockCount % HowManyBlocksPerSection : HowManyBlocksPerSection;
+            const waitForBlocks = blockCount - lastCycleBlockCount;
             await newRelativeTrigger(RelativeTriggerTypeBlocks, waitForBlocks, placedTriggerID);
-            if (blockCount === howManyDemoBlocks && howManyDemoBlocks < HowManyBlocks) {
+            if (blockCount === howManyDemoBlocks && howManyDemoBlocks < HowManyBlocks && !hasRises) {
                 await newComponentSwitch({triggerID: TriggerCheckLoop, on: true});
             }
-            await newRun(TriggerCheckBoard);
+            if (!hasRises) {
+                await newRun(TriggerCheckBoard);
+            }
             await newTrigger(TriggerTypeExternalConditional, placedTriggerID);
         }
         mapListForBlock.push(await newMap(MapTypeSubtractFromCurrentBoard));
@@ -389,15 +420,15 @@ async function setupTutorMaker() {
             nextHoldPiece = QueueHoldPieceNone;
         }
         await newQueueChange(QueueIPiece + nextQueue, nextHoldPiece, true, false);
-        const judgeTriggerID = `judge_stage${sectionCount}`;
-        if (blockCount === HowManyBlocks && blockCount % HowManyBlocksPerSection !== 0) {
+        if ((!hasRises && blockCount === HowManyBlocks && blockCount % HowManyBlocksPerSection !== 0) || lastCycleBeforeRise || hasRises) {
             await newRun(TriggerIDTwoLinePC);
         }
         await newRelativeTrigger(RelativeTriggerTypeLines, 2, judgeTriggerID)
         await newTrigger(TriggerTypeExternalConditional, judgeTriggerID);
-        const doneStageTriggerID = doneStageTriggerIDs[sectionCount];
+        const doneStageTriggerID = doneStageTriggerIDs.get(stageCount, stagePart);
+        let enableComponentsBeforeJudge: ComponentSwitch;
         if (!IsChallengeMode && blockCount <= howManyDemoBlocks) {
-            await newComponentSwitch({triggerID: doneStageTriggerIDs[sectionCount], on: true});
+            enableComponentsBeforeJudge = await newComponentSwitch({triggerID: doneStageTriggerID, on: true});
         }
         let conditionDo: number;
         let conditionDo2: string | null = null;
@@ -405,24 +436,41 @@ async function setupTutorMaker() {
             conditionDo = ConditionResultTypeGameOver;
         } else {
             conditionDo = ConditionResultTypeRunTriggerActions;
-            conditionDo2 = doneStageTriggerIDs[sectionCount - 1];
+            conditionDo2 = doneStageTriggerIDs.getLastOfStage(stageCount - 1);
         }
-        const relativeLinesCleared = totalLinesCleared[blockCount] - totalLinesCleared[startingBlockCount - 1];
+        const relativeLinesCleared = totalLinesCleared[blockCount] + 2 * risesSoFar.get(blockCount) - totalLinesCleared[startingBlockCount - 1] - 2 * risesSoFar.get(startingBlockCount);
         await newCondition(ConditionTypeCustomExpression, `${playTriggerID}.lines=${relativeLinesCleared + 2}`, false, conditionDo, conditionDo2);
-        const relativePCCount = actualPCCounts[blockCount] - actualPCCounts[startingBlockCount - 1];
-        await newCondition(ConditionTypeCustomExpression, `${playTriggerID}.PC=${relativePCCount + 1}`, false, conditionDo, conditionDo2);
+        const relativePCCount = actualPCCounts[blockCount] + risesSoFar.get(blockCount) - actualPCCounts[startingBlockCount - 1] - risesSoFar.get(startingBlockCount);
+        const pcCondition = await newCondition(ConditionTypeCustomExpression, `${playTriggerID}.PC=${relativePCCount + 1}`, false, conditionDo, conditionDo2);
+        if (!IsChallengeMode && blockCount <= howManyDemoBlocks) {
+            startComponentsDisabled.add({triggerID: `ID-${pcCondition.id}`, on: false});
+            enableComponentsBeforeJudge.add({triggerID: `ID-${pcCondition.id}`, on: true});
+        }
+        let startComponentsDisabledNextStage: ComponentSwitch;
         if (!IsChallengeMode && blockCount <= howManyDemoBlocks) {
             await newRun(doneStageTriggerID);
             await newTrigger(TriggerTypeExternalConditional, doneStageTriggerID);
             if (blockCount >= HowManyBlocks) {
                 await newCondition(ConditionTypeCustomExpression, 'blocks>=0', true, ConditionResultTypeSuccessfulGameEnd);
             } else {
-                await newComponentSwitch({triggerID: doneStageTriggerIDs[sectionCount + 1], on: false})
+                if (doneStageTriggerIDs.hasNext(doneStageTriggerID, stageCount) && blockCount === stageFinalBlockCount) {
+                    startComponentsDisabledNextStage = await newComponentSwitch();
+                    for (const [, doneStageTriggerID] of doneStageTriggerIDs.objects.get(stageCount + 1)) {
+                        startComponentsDisabledNextStage.add({triggerID: doneStageTriggerID, on: false});
+                    }
+                }
             }
-            mapListForBlock.push(await newMap(MapTypeReplaceBoard));
+            if (lastCycleBeforeRise) {
+                await updateMapContent(await newMap(MapTypeReplaceBoard), fumenWithRises.get(blockCount))
+            } else {
+                mapListForBlock.push(await newMap(MapTypeReplaceBoard));
+            }
         } else if (blockCount === HowManyBlocks) {
             mapListForBlock.push(await newMap(MapTypeReplaceBoard));
+        } else if (lastCycleBeforeRise && blockCount % HowManyBlocksPerSection !== 0) {
+            await updateMapContent(await newMap(MapTypeReplaceBoard), fumenWithRises.get(blockCount))
         }
+        return startComponentsDisabledNextStage;
     }
 
     async function makeDemoCycles(section: number, blockCount: number, totalBlocks: number, queue: string, finalTriggerID: string, mapListsByPieceIndex: Map<number, Array<MapComponent>>): Promise<void> {
@@ -437,43 +485,76 @@ async function setupTutorMaker() {
                 queue = holdPiece + queue.slice(2);
                 holdPiece = swap;
             }
-            if (!(mapListsByPieceIndex.get(blockCount) instanceof Array)) {
+            if (!mapListsByPieceIndex.has(blockCount)) {
                 mapListsByPieceIndex.set(blockCount, new Array<MapComponent>());
             }
-            if (typeof fumenWithFullLines[blockCount] === 'string') {
+            let pauseType = PauseHowLongBetweenPieces;
+            if (fumenWithFullLines.has(blockCount)) {
                 triggerSuffix = `_part_${triggerSection}`;
                 let afterFullLinesTriggerID = `demo_block${blockCount}` + triggerSuffix;
-                await newRelativeTrigger(RelativeTriggerTypeTime, PauseHowLongBetweenPieces, afterFullLinesTriggerID);
+                await newRelativeTrigger(RelativeTriggerTypeTime, pauseType, afterFullLinesTriggerID);
+                pauseType = PauseHowLongOnLineClear;
                 await newTrigger(TriggerTypeExternalConditional, afterFullLinesTriggerID);
                 triggerSection++;
                 triggerSuffix = `_part_${triggerSection}`;
                 demoTriggerID = `demo_block${blockCount}` + triggerSuffix
                 await updateMapContent(await newMap(MapTypeReplaceBoard), fumenWithFullLines.get(blockCount));
             }
-            await demoCycle(blockCount, demoTriggerID, queue, mapListsByPieceIndex.get(blockCount));
+            if (fumenWithRises.has(blockCount)) {
+                triggerSuffix = `_part_${triggerSection}`;
+                pauseType = PauseHowLongBetweenPieces;
+            }
+            await demoCycle(blockCount, demoTriggerID, queue, mapListsByPieceIndex.get(blockCount), pauseType);
+            pauseType = PauseHowLongBetweenPieces;
+            if (fumenWithRises.has(blockCount)) {
+                triggerSection++;
+                let afterFullLinesTriggerID = `demo_block${blockCount}` + triggerSuffix;
+                await newRelativeTrigger(RelativeTriggerTypeTime, pauseType, afterFullLinesTriggerID);
+                await newTrigger(TriggerTypeExternalConditional, afterFullLinesTriggerID);
+                triggerSection++;
+                triggerSuffix = `_part_${triggerSection}`;
+                demoTriggerID = `demo_block${blockCount}` + triggerSuffix
+                await updateMapContent(await newMap(MapTypeReplaceBoard), fumenWithRises.get(blockCount));
+            }
+            await newQueueChange(queue.slice(1), demoHoldPieces[blockCount], true, false);
             queue = queue.slice(1);
         }
         await newRelativeTrigger(RelativeTriggerTypeTime, PauseHowLongBetweenPieces * 2, finalTriggerID);
     }
 
-    // 1 cycle per block in BlockQueue
-    async function makeCycles(stageCount: number, playTriggerID: string, placedTriggerID: string, doneStageTriggerIDs: string[], blockCount: number, lastBlockInStage: number, mapListsByPieceIndex: Map<number, Array<MapComponent>>): Promise<void> {
-        const startingBlockCount = blockCount;
+    // 1 cycle for every HowManyBlocksPerSection blocks
+    async function makeCycles(stageCount: number, playTriggerID: string, placedStageTriggerIDs: PartMapsByStage<string>, doneStageTriggerIDs: PartMapsByStage<string>, blockCount: number, lastBlockInStage: number, mapListsByPieceIndex: Map<number, Array<MapComponent>>, startComponentsDisabled: ComponentSwitch): Promise<ComponentSwitch> {
+        let startingBlockCount = blockCount;
+        let lastCycleBlockCount = blockCount - 1;
+        let lastCycleBeforeRise = false;
+        let stagePart = 1;
+        let startComponentsDisabledNextStage: ComponentSwitch;
         for (; blockCount <= lastBlockInStage; blockCount++) {
-            if (!(mapListsByPieceIndex.get(blockCount) instanceof Array)) {
+            if (!mapListsByPieceIndex.has(blockCount)) {
                 mapListsByPieceIndex.set(blockCount, new Array<MapComponent>());
             }
             const lastCycleInStage = blockCount === lastBlockInStage;
-            if (lastCycleInStage) {
-                await cycle(stageCount, playTriggerID, placedTriggerID, doneStageTriggerIDs, startingBlockCount, blockCount, queues, holdPieces, mapListsByPieceIndex.get(blockCount));
+            lastCycleBeforeRise = fumenWithRises.has(blockCount);
+            if (lastCycleInStage || lastCycleBeforeRise) {
+                let judgeTriggerID = `judge_stage${stageCount}`;
+                if (lastCycleBeforeRise || stagePart > 1) {
+                    judgeTriggerID += `_p${stagePart}`;
+                }
+                startComponentsDisabledNextStage = await cycle(stageCount, stagePart, playTriggerID, placedStageTriggerIDs, judgeTriggerID, doneStageTriggerIDs, startingBlockCount, blockCount, lastCycleBlockCount, queues, holdPieces, mapListsByPieceIndex.get(blockCount), lastCycleBeforeRise, startComponentsDisabled);
+                stagePart++;
+                lastCycleBlockCount = blockCount;
+            }
+            if (lastCycleBeforeRise) {
+                lastCycleBeforeRise = false;
             }
         }
         if (!IsChallengeMode && blockCount <= howManyDemoBlocks) {
             await newQueueChange(demoQueues[blockCount], demoHoldPieces[blockCount], true, false, true);
         }
+        return startComponentsDisabledNextStage;
     }
 
-    async function initUserMode(queue: string, doneStageTriggerIDs: string[]) {
+    async function initUserMode(queue: string, placedStageTriggerIDs: PartMapsByStage<string>, doneStageTriggerIDs: PartMapsByStage<string>): Promise<ComponentSwitch> {
         await newTrigger(TriggerTypeBeforeGame, null);
         await newQueueChange(queue, QueueHoldPieceNone, true, false);
         await newTrigger(TriggerTypeOnGameStart, null);
@@ -483,13 +564,18 @@ async function setupTutorMaker() {
                 await newComponentSwitch({triggerID: TriggerCheckLoop, on: false});
             }
         }
-        const initDoneTriggerID = doneStageTriggerIDs[0];
+        const initDoneTriggerID = doneStageTriggerIDs.get(0, 1);
         await newRun(initDoneTriggerID);
         await newTrigger(TriggerTypeExternalConditional, initDoneTriggerID);
+        let startComponentsDisabled: ComponentSwitch;
         if (!IsChallengeMode) {
-            await newComponentSwitch({triggerID: doneStageTriggerIDs[1], on: false})
+            startComponentsDisabled = await newComponentSwitch()
+            for (const [, doneStageTriggerID] of doneStageTriggerIDs.objects.get(1)) {
+                startComponentsDisabled.add({triggerID: doneStageTriggerID, on: false});
+            }
         }
         await newRun(TriggerIDDefaultRuleset);
+        return startComponentsDisabled;
     }
 
     function setTotalSections(): void {
@@ -516,6 +602,7 @@ async function setupTutorMaker() {
     const tutorModeID: string = 'usermode-type-tutor';
     const challengeModeID: string = 'usermode-type-challenge';
     const timePerPieceID: string = 'time-per-piece';
+    const lineClearDelayID: string = 'line-clear-delay';
 
     async function fumenSection() {
         const fumenSection: HTMLDivElement = newDiv(null, 'fumen-section', 'col-sm-10');
@@ -610,12 +697,12 @@ async function setupTutorMaker() {
         challengeModeLabel.htmlFor = challengeModeID;
         challengeModeContainer.appendChild(challengeModeLabel);
 
-        const timePerPieceContainer: HTMLDivElement = newDiv(newDiv(inputsContainer, 'form-group'), 'row');
+        const delaysContainer: HTMLDivElement = newDiv(newDiv(inputsContainer, 'form-group'), 'row');
         const timePerPieceLabel: HTMLLabelElement = document.createElement('label');
         timePerPieceLabel.classList.add('col-sm-3', 'control-label');
         timePerPieceLabel.textContent = 'Demo time per piece';
         timePerPieceLabel.htmlFor = timePerPieceID;
-        timePerPieceContainer.appendChild(timePerPieceLabel);
+        delaysContainer.appendChild(timePerPieceLabel);
         const timePerPieceInput: HTMLInputElement = document.createElement('input');
         for (const attribute in inputAttributes) {
             timePerPieceInput.setAttribute(attribute, inputAttributes[attribute]);
@@ -623,7 +710,21 @@ async function setupTutorMaker() {
         timePerPieceInput.placeholder = '(seconds)';
         timePerPieceInput.value = PauseHowLongBetweenPieces.toString();
         timePerPieceInput.id = timePerPieceID;
-        newDiv(timePerPieceContainer, 'col-sm-3').appendChild(timePerPieceInput);
+        newDiv(delaysContainer, 'col-sm-3').appendChild(timePerPieceInput);
+
+        const lineClearDelayLabel: HTMLLabelElement = document.createElement('label');
+        lineClearDelayLabel.classList.add('col-sm-3', 'control-label');
+        lineClearDelayLabel.textContent = 'Demo line clear delay';
+        lineClearDelayLabel.htmlFor = lineClearDelayID;
+        delaysContainer.appendChild(lineClearDelayLabel);
+        const lineClearDelayInput: HTMLInputElement = document.createElement('input');
+        for (const attribute in inputAttributes) {
+            lineClearDelayInput.setAttribute(attribute, inputAttributes[attribute]);
+        }
+        lineClearDelayInput.placeholder = '(seconds)';
+        lineClearDelayInput.value = PauseHowLongOnLineClear.toString();
+        lineClearDelayInput.id = lineClearDelayID;
+        newDiv(delaysContainer, 'col-sm-3').appendChild(lineClearDelayInput);
 
         fumenSection.appendChild(mainRow);
         const saveButtonDiv: HTMLDivElement = saveAllButton().parentNode as HTMLDivElement;
@@ -637,8 +738,10 @@ async function setupTutorMaker() {
 
     let mapListsByPieceIndex: Map<number, Array<MapComponent>> = new Map();
     let fumenWithFullLines: Map<number, string> = new Map();
-    let mapChanges: Object = {};
-    let mapsWithChanges: Object = {};
+    let fumenWithRises: Map<number, string> = new Map();
+    let risesSoFar: Map<number, number> = new Map();
+    let risesAtStageEnd: Map<number, number> = new Map();
+    let hasRises: boolean;
 
     function setDefaultRuleset() {
         const defaultRuleset = {};
@@ -669,6 +772,86 @@ async function setupTutorMaker() {
         }
     }
 
+    class PartMapsByStage<T> {
+        objects: Map<number, Map<number, T>>
+
+        constructor() {
+            this.objects = new Map<number, Map<number, T>>();
+        }
+
+        add(stage: number, value: T) {
+            let mapForStage: Map<number, T>;
+            if (!this.objects.has(stage)) {
+                mapForStage = new Map<number, T>();
+                this.objects.set(stage, mapForStage);
+            } else {
+                mapForStage = this.objects.get(stage);
+            }
+            mapForStage.set(mapForStage.size + 1, value);
+        }
+
+        get(stage: number, part: number = 1): T {
+            return this.objects.get(stage).get(part);
+        }
+
+        getPrevious(entity: T, stage: number): T {
+            const mapForStage = this.objects.get(stage);
+            let index: number;
+            let value: T;
+            for ([index, value] of mapForStage) {
+                if (entity === value) {
+                    break;
+                }
+            }
+            if (mapForStage.has(index - 1)) {
+                return mapForStage.get(index - 1);
+            }
+            const previousStage = this.objects.get(stage - 1);
+            return previousStage.get(previousStage.size);
+        }
+
+        hasNext(entity: T, stage: number): boolean {
+            return this.hasNextInStage(entity, stage) || this.objects.has(stage + 1);
+        }
+
+        hasNextInStage(entity: T, stage: number): boolean {
+            const mapForStage = this.objects.get(stage);
+            let index: number;
+            let value: T;
+            for ([index, value] of mapForStage) {
+                if (entity === value) {
+                    break;
+                }
+            }
+            return mapForStage.has(index + 1);
+        }
+
+        getNext(entity: T, stage: number): T {
+            const mapForStage = this.objects.get(stage);
+            let index: number;
+            let value: T;
+            for ([index, value] of mapForStage) {
+                if (entity === value) {
+                    break;
+                }
+            }
+            if (mapForStage.has(index + 1)) {
+                return mapForStage.get(index + 1);
+            }
+            return this.objects.get(stage + 1).get(1);
+        }
+
+        getLastOfStage(stage: number): T {
+            const mapForStage = this.objects.get(stage);
+            return mapForStage.get(mapForStage.size);
+        }
+
+        isLastOfStage(entity: T, stage: number): boolean {
+            const mapForStage = this.objects.get(stage);
+            return entity === mapForStage.get(mapForStage.size);
+        }
+    }
+
 
     let queues: string[];
     let holdPieces: string[];
@@ -696,18 +879,48 @@ async function setupTutorMaker() {
             demoQueues = [];
             demoHoldPieces = [];
             buildQueues('');
-            const doneStageTriggerIDs: string[] = ['DonStag0'];
-            for (let section = 1; section <= totalSections; section++) {
-                doneStageTriggerIDs[section] = `DonStag${section}`;
+            const doneStageTriggerIDs: PartMapsByStage<string> = new PartMapsByStage<string>();
+            doneStageTriggerIDs.add(0, 'DnSt0');
+            let sectionCount = 1;
+            let partCount = 1;
+            for (let blockCount = 1; blockCount <= HowManyBlocks; blockCount++) {
+                if (blockCount % HowManyBlocksPerSection === 0 || blockCount === HowManyBlocks) {
+                    let triggerID = `DnSt${sectionCount}`;
+                    if (partCount > 1) {
+                        triggerID += `p${partCount}`;
+                    }
+                    doneStageTriggerIDs.add(sectionCount, triggerID);
+                    sectionCount++;
+                    partCount = 1;
+                } else if (fumenWithRises.has(blockCount)) {
+                    doneStageTriggerIDs.add(sectionCount, `DnSt${sectionCount}p${partCount}`);
+                    partCount++;
+                }
             }
 
-            await initUserMode(queues[1], doneStageTriggerIDs);
-            mapListsByPieceIndex.set(0, Array<MapComponent>(await newMap(MapTypeReplaceBoard)));
+            const placedStageTriggerIDs: PartMapsByStage<string> = new PartMapsByStage<string>();
+            sectionCount = 1;
+            partCount = 1;
+            for (let blockCount = 1; blockCount <= HowManyBlocks; blockCount++) {
+                if (blockCount % HowManyBlocksPerSection === 0 || blockCount === HowManyBlocks) {
+                    let triggerID = `plc${sectionCount}`;
+                    if (partCount > 1) {
+                        triggerID += `p${partCount}`;
+                    }
+                    placedStageTriggerIDs.add(sectionCount, triggerID);
+                    sectionCount++;
+                    partCount = 1;
+                } else if (fumenWithRises.has(blockCount)) {
+                    placedStageTriggerIDs.add(sectionCount, `plc${sectionCount}p${partCount}`);
+                    partCount++;
+                }
+            }
 
+            let startComponentsDisabled: ComponentSwitch = await initUserMode(queues[1], placedStageTriggerIDs, doneStageTriggerIDs);
+            mapListsByPieceIndex.set(0, Array<MapComponent>(await newMap(MapTypeReplaceBoard)));
 
             for (let section = 1; section <= totalSections; section++) {
                 const playTriggerID = `Stage${section}`;
-                const placedTriggerID = `placed_stage${section}`;
                 let sectionBeginningBlockCount = (section - 1) * HowManyBlocksPerSection + 1;
                 let sectionFinalBlockCount = section * HowManyBlocksPerSection;
                 if (sectionFinalBlockCount > HowManyBlocks) {
@@ -719,16 +932,20 @@ async function setupTutorMaker() {
                     await newRun(playTriggerID);
                 }
                 await newTrigger(TriggerTypeExternalConditional, playTriggerID);
-                let transitionMap: MapComponent = await newMap(MapTypeReplaceBoard)
+                const transitionMap = await newMap(MapTypeReplaceBoard)
+                if (fumenWithRises.has(sectionBeginningBlockCount - 1)) {
+                    await updateMapContent(transitionMap, fumenWithRises.get(sectionBeginningBlockCount - 1));
+                } else {
+                    mapListsByPieceIndex.get(sectionBeginningBlockCount - 1).push(transitionMap);
+                }
                 if (firstSection || (!IsChallengeMode && sectionBeginningBlockCount <= howManyDemoBlocks)) {
                     await newQueueChange(queues[sectionBeginningBlockCount], holdPieces[sectionBeginningBlockCount], true, false, (IsChallengeMode || sectionBeginningBlockCount > howManyDemoBlocks) && holdPieces[sectionBeginningBlockCount].length === 1);
                 }
-                mapListsByPieceIndex.get(sectionBeginningBlockCount - 1).push(transitionMap);
                 if (firstSection) {
                     firstSection = false;
                 }
 
-                await makeCycles(section, playTriggerID, placedTriggerID, doneStageTriggerIDs, sectionBeginningBlockCount, sectionFinalBlockCount, mapListsByPieceIndex);
+                startComponentsDisabled = await makeCycles(section, playTriggerID, placedStageTriggerIDs, doneStageTriggerIDs, sectionBeginningBlockCount, sectionFinalBlockCount, mapListsByPieceIndex, startComponentsDisabled);
                 if (sectionFinalBlockCount === HowManyBlocks) {
                     break;
                 }
@@ -750,9 +967,13 @@ async function setupTutorMaker() {
                     await newTrigger(TriggerTypeExternalConditional, TriggerCheckLoop);
                     await newRelativeTrigger(RelativeTriggerTypeBlocks, 7, TriggerIDTwoLinePC);
                 }
-                await newTrigger(TriggerTypeExternalConditional, TriggerCheckBoard)
+                if (!hasRises) {
+                    await newTrigger(TriggerTypeExternalConditional, TriggerCheckBoard)
+                }
             }
-            await newRelativeTrigger(RelativeTriggerTypeBlocks, 7, TriggerIDTwoLinePC);
+            if (!hasRises) {
+                await newRelativeTrigger(RelativeTriggerTypeBlocks, 7, TriggerIDTwoLinePC);
+            }
 
         }
     }
@@ -830,6 +1051,16 @@ async function setupTutorMaker() {
 
     let hasThumbnail: boolean = false;
 
+    function piecesToCompareString(pieces: number[]): string {
+        return pieces.slice(0, columnCount * (rowCount - 1)).join();
+    }
+
+    function pagesAreEqual(pieces1: number[], pieces2: number[]): boolean {
+        const firstCompareString = piecesToCompareString(pieces1);
+        const secondCompareString = piecesToCompareString(pieces2);
+        return firstCompareString === secondCompareString;
+    }
+
     async function loadFumenToMaps() {
         componentList = [];
         const generateProgress = () => updateStatus(`Generated ${componentList.length} components`);
@@ -862,11 +1093,28 @@ async function setupTutorMaker() {
         totalLinesCleared = Array(pages.length + 1).fill(0);
         actualPCCounts = Array(pages.length + 1).fill(0);
         fumenWithFullLines = new Map();
+        fumenWithRises = new Map();
+        risesSoFar = new Map();
+        risesAtStageEnd = new Map();
+        hasRises = false;
+        let cumulativeRises = 0;
+        let cumulativeRisesAtStageEnd = 0;
         let cumulativeLinesCleared = 0;
         let pieceIndex = 1;
+        let previousPieces: number[] = pages[0]['_field'].field.pieces;
         for (const page of pages) {
             if (HowManyBlocks > 0 && pieceIndex > HowManyBlocks) {
                 break;
+            }
+            risesSoFar.set(pieceIndex - 1, cumulativeRises);
+            risesAtStageEnd.set(pieceIndex - 1, cumulativeRisesAtStageEnd);
+            if (!pagesAreEqual(previousPieces, page['_field'].field.pieces)) {
+                const riseIndex = pieceIndex - 1;
+                cumulativeRises++;
+                fumenWithRises.set(riseIndex, fumenToMapData(fumen, page['_field'].field.pieces));
+                if (riseIndex % HowManyBlocksPerSection === 0) {
+                    cumulativeRisesAtStageEnd++;
+                }
             }
             addMinoToField(fumen, page);
             const linesBeforeClearing: Array<number> = page['_field'].field.pieces.slice();
@@ -877,6 +1125,12 @@ async function setupTutorMaker() {
             cumulativeLinesCleared += clearedThisPage;
             totalLinesCleared[pieceIndex] = cumulativeLinesCleared;
             pieceIndex++;
+            previousPieces = page['_field'].field.pieces.slice();
+        }
+        risesSoFar.set(pieceIndex - 1, cumulativeRises);
+        risesAtStageEnd.set(pieceIndex - 1, cumulativeRisesAtStageEnd);
+        if (cumulativeRises > 0) {
+            hasRises = true;
         }
         if (BlockQueue.length > 0 && HowManyBlocks === 0) {
             HowManyBlocks = pages.length;
@@ -895,6 +1149,7 @@ async function setupTutorMaker() {
 
         IsChallengeMode = (document.querySelector(`#${challengeModeID}`) as HTMLInputElement).checked === true;
         PauseHowLongBetweenPieces = parseFloat((document.querySelector(`#${timePerPieceID}`) as HTMLInputElement).value);
+        PauseHowLongOnLineClear = parseFloat((document.querySelector(`#${lineClearDelayID}`) as HTMLInputElement).value);
 
         await loadComponents(thumbnailContent);
         pieceIndex = 1;
@@ -908,12 +1163,21 @@ async function setupTutorMaker() {
         }
         clearInterval(progressInterval);
         loadProgress();
-        // Progress for Backbone.js render components in the DOM. Backbone.js locks up the page until it's done, but if they ever don't,
+        // Progress for Backbone.js rendering components in the DOM. Backbone.js locks up the page until it's done, but if they ever don't,
         // this progress interval will work.
         progressInterval = window.setInterval(loadProgress, 1000);
         await sleep();
+        await scrubComponents();
         // Load in a separate thread in an attempt to keep the page from locking up while it's loading
         setTimeout(loadUsermodeForm, 0);
+    }
+
+    async function scrubComponents() {
+        for (const component of componentList) {
+            if (component instanceof ComponentSwitch) {
+                delete component.switchIndex;
+            }
+        }
     }
 
     async function loadingDone() {

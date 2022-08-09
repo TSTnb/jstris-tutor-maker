@@ -22,4 +22,4 @@ Helps you make a Jstris usermode for placing a queue of pieces in the right spot
 
 <hr>
 
-<img src="https://i.imgur.com/ioFYQnI.png" alt="Jstris Tutor Maker screenshot"/>
+<img src="https://i.imgur.com/m4lcb7D.png" alt="Jstris Tutor Maker screenshot"/>
