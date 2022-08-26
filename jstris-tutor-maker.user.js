@@ -50,7 +50,7 @@ async function setupTutorMaker() {'use strict';
     let HowManyBlocksPerSection = 7;
 
     // PauseHowLongBetweenPieces is the number of seconds to pause between steps in tutor mode
-    let PauseHowLongBetweenPieces = 0.6;
+    let PauseHowLongBetweenPieces = 0.8;
 
     // PauseHowLongBetweenPieces is the number of seconds to pause between steps in tutor mode
     let PauseHowLongOnLineClear = 0.2;
