@@ -46,6 +46,9 @@ async function setupTutorMaker() {'use strict';
     // IsChallengeMode decides whether this is a Tutor mode or a Challenge mode.
     let IsChallengeMode = false;
 
+    // DemoStageRetries decides whether the player can try a stage again or gets a game over if they do it wrong
+    let DemoStageRetries = true;
+
     // HowManyBlocksPerSection decides how often to check if the player's field looks correct.
     let HowManyBlocksPerSection = 7;
 
@@ -382,7 +385,7 @@ async function setupTutorMaker() {'use strict';
         } else {
             const waitForBlocks = blockCount - lastCycleBlockCount;
             await newRelativeTrigger(RelativeTriggerTypeBlocks, waitForBlocks, placedTriggerID);
-            if (blockCount === howManyDemoBlocks && howManyDemoBlocks < HowManyBlocks && !hasRises) {
+            if (blockCount === howManyDemoBlocks && DemoStageRetries && howManyDemoBlocks < HowManyBlocks && !hasRises) {
                 await newComponentSwitch({triggerID: TriggerCheckLoop, on: true});
             }
             if (!hasRises) {
@@ -408,12 +411,12 @@ async function setupTutorMaker() {'use strict';
         await newTrigger(TriggerTypeExternalConditional, judgeTriggerID);
         const doneStageTriggerID = doneStageTriggerIDs.get(stageCount, stagePart);
         let enableComponentsBeforeJudge;
-        if (!IsChallengeMode && blockCount <= howManyDemoBlocks) {
+        if (!IsChallengeMode && DemoStageRetries && blockCount <= howManyDemoBlocks) {
             enableComponentsBeforeJudge = await newComponentSwitch({triggerID: doneStageTriggerID, on: true});
         }
         let conditionDo;
         let conditionDo2 = null;
-        if (IsChallengeMode || blockCount > howManyDemoBlocks) {
+        if (IsChallengeMode || blockCount > howManyDemoBlocks || !DemoStageRetries) {
             conditionDo = ConditionResultTypeGameOver;
         } else {
             conditionDo = ConditionResultTypeRunTriggerActions;
@@ -423,7 +426,7 @@ async function setupTutorMaker() {'use strict';
         await newCondition(ConditionTypeCustomExpression, `${playTriggerID}.lines=${relativeLinesCleared + 2}`, false, conditionDo, conditionDo2);
         const relativePCCount = actualPCCounts[blockCount] + risesSoFar.get(blockCount) - actualPCCounts[startingBlockCount - 1] - risesSoFar.get(startingBlockCount);
         const pcCondition = await newCondition(ConditionTypeCustomExpression, `${playTriggerID}.PC=${relativePCCount + 1}`, false, conditionDo, conditionDo2);
-        if (!IsChallengeMode && blockCount <= howManyDemoBlocks) {
+        if (!IsChallengeMode && DemoStageRetries && blockCount <= howManyDemoBlocks) {
             startComponentsDisabled.add({triggerID: `ID-${pcCondition.id}`, on: false});
             enableComponentsBeforeJudge.add({triggerID: `ID-${pcCondition.id}`, on: true});
         }
@@ -434,7 +437,7 @@ async function setupTutorMaker() {'use strict';
             if (blockCount >= HowManyBlocks) {
                 await newCondition(ConditionTypeCustomExpression, 'blocks>=0', true, ConditionResultTypeSuccessfulGameEnd);
             } else {
-                if (doneStageTriggerIDs.hasNext(doneStageTriggerID, stageCount) && blockCount === stageFinalBlockCount) {
+                if (DemoStageRetries && doneStageTriggerIDs.hasNext(doneStageTriggerID, stageCount) && blockCount === stageFinalBlockCount) {
                     startComponentsDisabledNextStage = await newComponentSwitch();
                     for (const [, doneStageTriggerID] of doneStageTriggerIDs.objects.get(stageCount + 1)) {
                         startComponentsDisabledNextStage.add({triggerID: doneStageTriggerID, on: false});
@@ -541,7 +544,7 @@ async function setupTutorMaker() {'use strict';
         await newTrigger(TriggerTypeOnGameStart, null);
         if (!IsChallengeMode) {
             await newQueueChange(queue, QueueHoldPieceNone, true, false);
-            if (howManyDemoBlocks < HowManyBlocks) {
+            if (DemoStageRetries && howManyDemoBlocks < HowManyBlocks) {
                 await newComponentSwitch({triggerID: TriggerCheckLoop, on: false});
             }
         }
@@ -549,7 +552,7 @@ async function setupTutorMaker() {'use strict';
         await newRun(initDoneTriggerID);
         await newTrigger(TriggerTypeExternalConditional, initDoneTriggerID);
         let startComponentsDisabled;
-        if (!IsChallengeMode) {
+        if (!IsChallengeMode && DemoStageRetries) {
             startComponentsDisabled = await newComponentSwitch();
             for (const [, doneStageTriggerID] of doneStageTriggerIDs.objects.get(1)) {
                 startComponentsDisabled.add({triggerID: doneStageTriggerID, on: false});
@@ -579,6 +582,7 @@ async function setupTutorMaker() {'use strict';
     }
 
     const sectionID = 'blocks-per-section';
+    const retriesID = 'demo-stage-retries';
     const fumenInputID = 'fumen-input';
     const tutorModeID = 'usermode-type-tutor';
     const challengeModeID = 'usermode-type-challenge';
@@ -697,6 +701,29 @@ async function setupTutorMaker() {'use strict';
         lineClearDelayInput.value = PauseHowLongOnLineClear.toString();
         lineClearDelayInput.id = lineClearDelayID;
         newDiv(delaysContainer, 'col-sm-3').appendChild(lineClearDelayInput);
+        const retriesContainer = newDiv(newDiv(inputsContainer, 'form-group'), 'row');
+        const retriesLabel = document.createElement('label');
+        retriesLabel.textContent = 'Demo stage retries';
+        retriesLabel.classList.add('col-sm-3', 'control-label');
+        retriesLabel.htmlFor = retriesID;
+        retriesContainer.appendChild(retriesLabel);
+        const retriesSelectContainer = newDiv(retriesContainer, 'col-sm-3');
+        const retriesSelect = document.createElement('select');
+        retriesSelect.classList.add('form-control');
+        retriesSelect.id = retriesID;
+        const retryOptions = {'Yes': true, 'No': false};
+        for (const retryText in retryOptions) {
+            const option = document.createElement('option');
+            const optionValue = retryOptions[retryText];
+            option.value = optionValue.toString();
+            option.textContent = retryText;
+            if (optionValue === DemoStageRetries) {
+                option.textContent += ' (default)';
+                option.selected = true;
+            }
+            retriesSelect.appendChild(option);
+        }
+        retriesContainer.appendChild(retriesSelectContainer).appendChild(retriesSelect);
         fumenSection.appendChild(mainRow);
         const saveButtonDiv = saveAllButton().parentNode;
         saveButtonDiv.classList.remove('col-sm-12');
@@ -1098,6 +1125,7 @@ async function setupTutorMaker() {'use strict';
             BlockQueue += 'I';
         }
         IsChallengeMode = document.querySelector(`#${challengeModeID}`).checked === true;
+        DemoStageRetries = document.querySelector(`#${retriesID}`).value === 'true';
         PauseHowLongBetweenPieces = parseFloat(document.querySelector(`#${timePerPieceID}`).value);
         PauseHowLongOnLineClear = parseFloat(document.querySelector(`#${lineClearDelayID}`).value);
         await loadComponents(thumbnailContent);
