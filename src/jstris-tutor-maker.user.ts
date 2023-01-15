@@ -2,7 +2,7 @@
 // @name         Jstris Tutor Maker
 // @license      BSD-2-Clause
 // @namespace    Jstris Tutor Maker
-// @version      0.4.0
+// @version      0.4.1
 // @description  Helps you make a Jstris usermode for placing a queue of pieces in the right spots
 // @author       TSTman
 // @match        https://jstris.jezevec10.com/usermodes/create*
@@ -644,7 +644,7 @@ async function setupTutorMaker() {
             fumenInput.setAttribute(attribute, inputAttributes[attribute]);
         }
         fumenInput.id = fumenInputID;
-        fumenInput.placeholder = 'Enter fumen here';
+        fumenInput.placeholder = 'Enter fumen or replay here';
         fumenContainer.appendChild(fumenInput);
 
         const settingsContainer: HTMLDivElement = newDiv(newDiv(inputsContainer, 'form-group'), 'row');
@@ -1089,7 +1089,38 @@ async function setupTutorMaker() {
         return firstCompareString === secondCompareString;
     }
 
+    async function fumenFromReplay(fumen: any, input): Promise<Pages> {
+        let xhr = new XMLHttpRequest();
+        input = await new Promise((resolve, reject) => {
+            xhr.onload = () => {
+                if (xhr.status !== 200) {
+                    return reject();
+                }
+                return resolve(JSON.parse(xhr.responseText).fumen);
+            };
+            xhr.open('POST', 'https://fumen.tstman.net/jstris', true);
+            xhr.send(`replay=${input}`);
+        });
+        const pages: Pages = fumen.decode(input);
+        pages['type'] = 'replay';
+        return pages;
+    }
+
+    async function fumenFromInput(fumen: any, input: string): Promise<Pages> {
+        input = input.trim();
+        try {
+            const pages: Pages = fumen.decode(input);
+            pages['type'] = 'fumen';
+            return pages;
+        } catch (err) {
+        }
+        return await fumenFromReplay(fumen, input);
+    }
+
+    let capitalizedType: string;
+
     async function loadFumenToMaps() {
+        capitalizedType = 'Fumen';
         componentList = [];
         const generateProgress = () => updateStatus(`Generated ${componentList.length} components`);
         const loadProgress = () => {
@@ -1103,14 +1134,19 @@ async function setupTutorMaker() {
         const fumenButton: HTMLButtonElement = fumenSaveButton();
         fumenButton.classList.add('btn-warning');
         fumenButton.classList.remove('btn-success');
-        fumenButton.textContent = 'Fumen loading...';
+        fumenButton.textContent = capitalizedType + ' loading...';
         fumenButton.classList.add('disabled');
         fumenButton.setAttribute('disabled', '');
         let fumen = new Fumen();
         mapFumenPiecesToJstrisPieces(fumen);
-
         let inputElement: HTMLInputElement = document.querySelector(`#${fumenInputID}`);
-        const pages: Pages = fumen.decode(inputElement.value);
+        const pages: Pages = await fumenFromInput(fumen, inputElement.value);
+        capitalizedType = pages['type'][0].toUpperCase() + pages['type'].slice(1);
+        let loadingText = capitalizedType + ' loading...';
+        if (fumenButton.textContent !== loadingText) {
+            fumenButton.textContent = loadingText;
+        }
+        await sleep();
         let thumbnailContent: string;
         if (pages[0].flags.quiz === false && !(pages[0].operation instanceof fumen.Mino)) {
             hasThumbnail = true;
@@ -1216,7 +1252,7 @@ async function setupTutorMaker() {
 
         fumenButton.classList.add('btn-success');
         fumenButton.classList.remove('btn-warning');
-        fumenButton.textContent = 'Fumen loaded!';
+        fumenButton.textContent = capitalizedType + ' loaded!';
         fumenButton.classList.remove('disabled')
         fumenButton.removeAttribute('disabled');
         await resetStatus();
@@ -1234,7 +1270,7 @@ async function setupTutorMaker() {
         })
 
         // @ts-ignore
-        $("#pubSection").hide();
+        $('#pubSection').hide();
         await sleep();
         await loadingDone();
     }

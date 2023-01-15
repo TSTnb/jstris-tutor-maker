@@ -5,11 +5,11 @@ Helps you make a Jstris usermode for placing a queue of pieces in the right spot
 <h2>How to use</h2>
 
 <ol>
-<li>Go to <a target="_blank" href="https://fumen.zui.jp/#english.js|frame.js">https://fumen.zui.jp/#english.js|frame.js</a>, make a fumen that you want your usermode's players to follow, and press <i>Output Data</i>. If you just want to see Jstris Tutor Maker in action, press the <i>Example fumen</i> button instead and skip to step 4.
+<li>Go to <a target="_blank" href="https://fumen.zui.jp/#english.js|frame.js">https://fumen.zui.jp/#english.js|frame.js</a></sup>, make a fumen that you want your usermode's players to follow, and press <i>Output Data</i>. If you just want to see Jstris Tutor Maker in action, press the <i>Example fumen</i> button instead and skip to step 4.
 
 <li>Go to <a href="https://jstris.jezevec10.com/usermodes/create">https://jstris.jezevec10.com/usermodes/create</a></li>
 
-<li>Paste the fumen code in the text box that says <i>Enter fumen here</i>
+<li>Paste the fumen or replay code in the text box that says <i>Enter fumen or replay here</i>.
     <ol><li>If you want your usermode to have a thumbnail, make it on the first frame of your fumen. Just make sure the quiz and mino are disabled on that thumbnail frame.</li></ol>
 </li>
 
@@ -23,3 +23,5 @@ Helps you make a Jstris usermode for placing a queue of pieces in the right spot
 <hr>
 
 <img src="https://i.imgur.com/m4lcb7D.png" alt="Jstris Tutor Maker screenshot"/>
+
+Special thanks to freyhoe for help getting fumen from Jstris replays.

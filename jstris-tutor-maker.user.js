@@ -2,7 +2,7 @@
 // @name         Jstris Tutor Maker
 // @license      BSD-2-Clause
 // @namespace    Jstris Tutor Maker
-// @version      0.4.0
+// @version      0.4.1
 // @description  Helps you make a Jstris usermode for placing a queue of pieces in the right spots
 // @author       TSTman
 // @match        https://jstris.jezevec10.com/usermodes/create*
@@ -622,7 +622,7 @@ async function setupTutorMaker() {'use strict';
             fumenInput.setAttribute(attribute, inputAttributes[attribute]);
         }
         fumenInput.id = fumenInputID;
-        fumenInput.placeholder = 'Enter fumen here';
+        fumenInput.placeholder = 'Enter fumen or replay here';
         fumenContainer.appendChild(fumenInput);
         const settingsContainer = newDiv(newDiv(inputsContainer, 'form-group'), 'row');
         const sectionLabel = document.createElement('label');
@@ -1042,7 +1042,38 @@ async function setupTutorMaker() {'use strict';
         return firstCompareString === secondCompareString;
     }
 
+    async function fumenFromReplay(fumen, input) {
+        let xhr = new XMLHttpRequest();
+        input = await new Promise((resolve, reject) => {
+            xhr.onload = () => {
+                if (xhr.status !== 200) {
+                    return reject();
+                }
+                return resolve(JSON.parse(xhr.responseText).fumen);
+            };
+            xhr.open('POST', 'https://fumen.tstman.net/jstris', true);
+            xhr.send(`replay=${input}`);
+        });
+        const pages = fumen.decode(input);
+        pages['type'] = 'replay';
+        return pages;
+    }
+
+    async function fumenFromInput(fumen, input) {
+        input = input.trim();
+        try {
+            const pages = fumen.decode(input);
+            pages['type'] = 'fumen';
+            return pages;
+        } catch (err) {
+        }
+        return await fumenFromReplay(fumen, input);
+    }
+
+    let capitalizedType;
+
     async function loadFumenToMaps() {
+        capitalizedType = 'Fumen';
         componentList = [];
         const generateProgress = () => updateStatus(`Generated ${componentList.length} components`);
         const loadProgress = () => {
@@ -1055,13 +1086,19 @@ async function setupTutorMaker() {'use strict';
         const fumenButton = fumenSaveButton();
         fumenButton.classList.add('btn-warning');
         fumenButton.classList.remove('btn-success');
-        fumenButton.textContent = 'Fumen loading...';
+        fumenButton.textContent = capitalizedType + ' loading...';
         fumenButton.classList.add('disabled');
         fumenButton.setAttribute('disabled', '');
         let fumen = new Fumen();
         mapFumenPiecesToJstrisPieces(fumen);
         let inputElement = document.querySelector(`#${fumenInputID}`);
-        const pages = fumen.decode(inputElement.value);
+        const pages = await fumenFromInput(fumen, inputElement.value);
+        capitalizedType = pages['type'][0].toUpperCase() + pages['type'].slice(1);
+        let loadingText = capitalizedType + ' loading...';
+        if (fumenButton.textContent !== loadingText) {
+            fumenButton.textContent = loadingText;
+        }
+        await sleep();
         let thumbnailContent;
         if (pages[0].flags.quiz === false && !(pages[0].operation instanceof fumen.Mino)) {
             hasThumbnail = true;
@@ -1162,7 +1199,7 @@ async function setupTutorMaker() {'use strict';
         clearInterval(progressInterval);
         fumenButton.classList.add('btn-success');
         fumenButton.classList.remove('btn-warning');
-        fumenButton.textContent = 'Fumen loaded!';
+        fumenButton.textContent = capitalizedType + ' loaded!';
         fumenButton.classList.remove('disabled');
         fumenButton.removeAttribute('disabled');
         await resetStatus();
@@ -1178,7 +1215,7 @@ async function setupTutorMaker() {'use strict';
             $("#modeForm").submit();
         });
         // @ts-ignore
-        $("#pubSection").hide();
+        $('#pubSection').hide();
         await sleep();
         await loadingDone();
     }
@@ -2093,15 +2130,15 @@ async function setupTutorMaker() {'use strict';
         }
 
         class Field {
-            constructor(field) {
-                this.field = field;
-            }
-
             static create(field, garbage) {
                 return new Field(new InnerField({
                     field: field !== undefined ? PlayField.load(field) : undefined,
                     garbage: garbage !== undefined ? PlayField.loadMinify(garbage) : undefined,
                 }));
+            }
+
+            constructor(field) {
+                this.field = field;
             }
 
             canFill(operation) {
@@ -2190,15 +2227,15 @@ async function setupTutorMaker() {'use strict';
         }
 
         class Mino {
+            static from(operation) {
+                return new Mino(operation.type, operation.rotation, operation.x, operation.y);
+            }
+
             constructor(type, rotation, x, y) {
                 this.type = type;
                 this.rotation = rotation;
                 this.x = x;
                 this.y = y;
-            }
-
-            static from(operation) {
-                return new Mino(operation.type, operation.rotation, operation.x, operation.y);
             }
 
             positions() {
@@ -2260,16 +2297,16 @@ async function setupTutorMaker() {'use strict';
         }
 
         class InnerField {
+            static create(length) {
+                return new PlayField({length});
+            }
+
             constructor({
                             field = InnerField.create(FieldConstants.PlayBlocks),
                             garbage = InnerField.create(FieldConstants.Width),
                         }) {
                 this.field = field;
                 this.garbage = garbage;
-            }
-
-            static create(length) {
-                return new PlayField({length});
             }
 
             fill(operation) {
@@ -2379,15 +2416,6 @@ async function setupTutorMaker() {'use strict';
         }
 
         class PlayField {
-            constructor({pieces, length = FieldConstants.PlayBlocks}) {
-                if (pieces !== undefined) {
-                    this.pieces = pieces;
-                } else {
-                    this.pieces = Array.from({length}).map(() => Piece.Empty);
-                }
-                this.length = length;
-            }
-
             static load(...lines) {
                 const blocks = lines.join('').trim();
                 return PlayField.loadInner(blocks);
@@ -2409,6 +2437,15 @@ async function setupTutorMaker() {'use strict';
                     field.set(index % 10, Math.floor((len - index - 1) / 10), parsePiece(block));
                 }
                 return field;
+            }
+
+            constructor({pieces, length = FieldConstants.PlayBlocks}) {
+                if (pieces !== undefined) {
+                    this.pieces = pieces;
+                } else {
+                    this.pieces = Array.from({length}).map(() => Piece.Empty);
+                }
+                this.length = length;
             }
 
             get(x, y) {
@@ -2604,10 +2641,6 @@ async function setupTutorMaker() {'use strict';
         })(QuizOperation || (QuizOperation = {}));
 
         class Quiz {
-            constructor(quiz) {
-                this.quiz = Quiz.verify(quiz);
-            }
-
             get next() {
                 const index = this.quiz.indexOf(')') + 1;
                 const name = this.quiz[index];
@@ -2631,6 +2664,10 @@ async function setupTutorMaker() {'use strict';
 
             static trim(quiz) {
                 return quiz.trim().replace(/\s+/g, '');
+            }
+
+            constructor(quiz) {
+                this.quiz = Quiz.verify(quiz);
             }
 
             get least() {
